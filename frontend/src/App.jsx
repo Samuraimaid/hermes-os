@@ -293,6 +293,7 @@ function CashView() {
   const [orders, setOrders] = useState([]);
   const [opening, setOpening] = useState("0");
   const [counted, setCounted] = useState("0");
+  const [tipPct, setTipPct] = useState(0);
   const [error, setError] = useState("");
   const [closed, setClosed] = useState(null);
 
@@ -367,6 +368,18 @@ function CashView() {
           </section>
           <section className="card" style={{ marginTop: 18 }}>
             <h2>Cobrar órdenes abiertas</h2>
+            <p className="muted">Propina que se suma al cobrar</p>
+            <div className="actions">
+              {[0, 10, 15].map((n) => (
+                <button
+                  key={n}
+                  className={tipPct === n ? "tab on" : "tab"}
+                  onClick={() => setTipPct(n)}
+                >
+                  {n}%
+                </button>
+              ))}
+            </div>
             {orders.length === 0 && <p className="muted">No hay cuentas en pista.</p>}
             {orders.map((o) => (
               <div className="ticket" key={o.id}>
@@ -385,9 +398,14 @@ function CashView() {
                         run(async () => {
                           const bal = await api(`/api/orders/${o.id}/balance`);
                           if (!bal.due_cents) throw new Error("Ya está pagada");
+                          const tip_cents = Math.round((bal.due_cents * tipPct) / 100);
                           await api(`/api/orders/${o.id}/pay`, {
                             method: "POST",
-                            body: JSON.stringify({ method: m, amount_cents: bal.due_cents }),
+                            body: JSON.stringify({
+                              method: m,
+                              amount_cents: bal.due_cents,
+                              tip_cents,
+                            }),
                           });
                         })
                       }
