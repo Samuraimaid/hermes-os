@@ -27,6 +27,7 @@ class AddItemIn(BaseModel):
     product_id: int
     qty: int = Field(default=1, ge=1)
     notes: str | None = None
+    modifier_ids: list[int] = []
 
 
 class BumpIn(BaseModel):
@@ -191,7 +192,14 @@ def create_order(body: OpenOrderIn):
 @app.post("/api/orders/{order_id}/items")
 def add_item(order_id: int, body: AddItemIn):
     _need_seed()
-    return _ok(order_svc.add_item, order_id, body.product_id, body.qty, body.notes)
+    return _ok(
+        order_svc.add_item,
+        order_id,
+        body.product_id,
+        body.qty,
+        body.notes,
+        body.modifier_ids,
+    )
 
 
 @app.post("/api/orders/{order_id}/send")

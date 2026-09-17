@@ -7,6 +7,34 @@ from app.mechanisms import mechanism_for
 from app.profiles import PROFILES, resolve_modules
 from app.settings import settings
 
+
+def _ensure_modifiers(venue_id: int) -> None:
+    products = db.fetch_all("SELECT id, sku FROM products WHERE venue_id = %s", (venue_id,))
+    for product in products:
+        already = db.fetch_one(
+            "SELECT id FROM product_modifiers WHERE product_id = %s LIMIT 1",
+            (product["id"],),
+        )
+        if already:
+            continue
+        for name, delta in MODS_BY_SKU.get(product["sku"] or "", []):
+            db.execute(
+                """
+                INSERT INTO product_modifiers (product_id, name, price_delta_cents)
+                VALUES (%s, %s, %s)
+                """,
+                (product["id"], name, delta),
+            )
+
+MODS_BY_SKU = {
+    "BEB": [("Sin hielo", 0), ("Con limón", 0), ("Doble", 2000)],
+    "TRAGO": [("Sin hielo", 0), ("Doble", 2500), ("Twist de limón", 0)],
+    "CERVEZA": [("Michelada", 1500), ("Vaso helado", 0)],
+    "PLATO": [("Término medio", 0), ("Bien cocido", 0), ("Sin salsa", 0)],
+    "COMBO": [("Sin cebolla", 0), ("Extra salsa", 500)],
+    "BOTANA": [("Picante", 0), ("Extra queso", 1500)],
+}
+
 LAYOUTS: dict[str, dict] = {
     "restaurant": {
         "stations": [
@@ -159,6 +187,8 @@ def ensure_demo_venue() -> dict | None:
                 """,
                 (vid, sku, name, cat, price, dest_id, sala, barra, mostrador, unlimited),
             )
+
+    _ensure_modifiers(vid)
 
     return {
         "venue": venue,

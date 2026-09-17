@@ -49,6 +49,18 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.5.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    """
+    CREATE TABLE IF NOT EXISTS order_item_modifiers (
+        id BIGSERIAL PRIMARY KEY,
+        item_id BIGINT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        price_delta_cents INT NOT NULL DEFAULT 0
+    )
+    """,
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.6.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

@@ -108,6 +108,8 @@ function FloorView() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [current, setCurrent] = useState(null);
+  const [pending, setPending] = useState(null);
+  const [picked, setPicked] = useState([]);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -178,21 +180,68 @@ function FloorView() {
                 key={p.id}
                 className="rowbtn"
                 disabled={!current}
-                onClick={() =>
+                onClick={() => {
+                  if (p.modifiers && p.modifiers.length) {
+                    setPending(p);
+                    setPicked([]);
+                    return;
+                  }
                   run(async () => {
                     const order = await api(`/api/orders/${current.id}/items`, {
                       method: "POST",
                       body: JSON.stringify({ product_id: p.id, qty: 1 }),
                     });
                     setCurrent(order);
-                  })
-                }
+                  });
+                }}
               >
                 <strong>{p.name}</strong>
                 <span>{p.station || "caja"} · {(p.price_cents / 100).toFixed(2)}</span>
               </button>
             ))}
           </div>
+          {pending && (
+            <div className="ticket">
+              <p>
+                <strong>{pending.name}</strong>
+              </p>
+              {pending.modifiers.map((m) => (
+                <label key={m.id} className="muted" style={{ display: "block", marginTop: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(m.id)}
+                    onChange={() =>
+                      setPicked(
+                        picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id]
+                      )
+                    }
+                  />{" "}
+                  {m.name}
+                  {m.price_delta_cents ? ` (+${(m.price_delta_cents / 100).toFixed(2)})` : ""}
+                </label>
+              ))}
+              <button
+                className="primary"
+                onClick={() =>
+                  run(async () => {
+                    const order = await api(`/api/orders/${current.id}/items`, {
+                      method: "POST",
+                      body: JSON.stringify({
+                        product_id: pending.id,
+                        qty: 1,
+                        modifier_ids: picked,
+                      }),
+                    });
+                    setCurrent(order);
+                    setPending(null);
+                    setPicked([]);
+                  })
+                }
+              >
+                Agregar
+              </button>
+            </div>
+          )}
         </section>
         <section className="card">
           <h2>{current ? current.space?.name || `Orden #${current.id}` : "Orden"}</h2>
@@ -208,6 +257,9 @@ function FloorView() {
                   <div className="row" key={i.id}>
                     <span>
                       {i.qty}× {i.name}
+                      {i.modifiers?.length
+                        ? ` (${i.modifiers.map((m) => m.name).join(", ")})`
+                        : ""}
                     </span>
                     <span>
                       {i.station || "—"} · {i.status}
@@ -332,6 +384,9 @@ function KdsView() {
                   </strong>
                   <span>{t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}</span>
                 </header>
+                {t.modifiers?.length ? (
+                  <p className="muted">{t.modifiers.map((m) => m.name).join(" · ")}</p>
+                ) : null}
                 {t.notes && <p className="muted">{t.notes}</p>}
                 <div className="actions">
                   {t.status === "queued" && (

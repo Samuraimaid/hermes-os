@@ -48,6 +48,17 @@ def _load_order(order_id: int) -> dict | None:
     return {"order": order, "items": items, "space": space}
 
 
+def _item_mods(item_id: int) -> list[dict]:
+    try:
+        rows = db.fetch_all(
+            "SELECT name, price_delta_cents FROM order_item_modifiers WHERE item_id = %s ORDER BY id",
+            (item_id,),
+        )
+    except Exception:
+        return []
+    return [{"name": r["name"], "price_delta_cents": r["price_delta_cents"]} for r in rows]
+
+
 def order_out(bundle: dict) -> dict:
     order = bundle["order"]
     items = bundle["items"]
@@ -83,6 +94,7 @@ def order_out(bundle: dict) -> dict:
                 "station": i.get("station_key"),
                 "station_name": i.get("station_name"),
                 "sent_at": i["sent_at"].isoformat() if i.get("sent_at") else None,
+                "modifiers": _item_mods(i["id"]),
             }
             for i in items
         ],
@@ -163,7 +175,13 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
     return order_out({"order": created, "items": [], "space": space})
 
 
-def add_item(order_id: int, product_id: int, qty: int = 1, notes: str | None = None) -> dict:
+def add_item(
+    order_id: int,
+    product_id: int,
+    qty: int = 1,
+    notes: str | None = None,
+    modifier_ids: list[int] | None = None,
+) -> dict:
     bundle = _load_order(order_id)
     if not bundle:
         raise ValueError("Orden no encontrada")
@@ -185,7 +203,19 @@ def add_item(order_id: int, product_id: int, qty: int = 1, notes: str | None = N
     if not allowed.get(origin, True):
         raise ValueError(f"Ese producto no se vende en {origin}")
 
-    db.fetch_one(
+    chosen = []
+    extra = 0
+    for mid in modifier_ids or []:
+        mod = db.fetch_one(
+            "SELECT * FROM product_modifiers WHERE id = %s AND product_id = %s",
+            (mid, product["id"]),
+        )
+        if not mod:
+            raise ValueError("Modificador no válido")
+        chosen.append(mod)
+        extra += mod["price_delta_cents"] or 0
+    unit = (product.get("price_cents") or 0) + extra
+    created = db.fetch_one(
         """
         INSERT INTO order_items (
             order_id, product_id, name_snapshot, qty, station_id, status, notes, price_cents
@@ -200,9 +230,17 @@ def add_item(order_id: int, product_id: int, qty: int = 1, notes: str | None = N
             max(1, qty),
             product.get("destination_station_id"),
             notes,
-            product.get("price_cents") or 0,
+            unit,
         ),
     )
+    for mod in chosen:
+        db.execute(
+            """
+            INSERT INTO order_item_modifiers (item_id, name, price_delta_cents)
+            VALUES (%s, %s, %s)
+            """,
+            (created["id"], mod["name"], mod["price_delta_cents"] or 0),
+        )
     if bundle["order"]["status"] in {"sent", "in_progress", "ready"}:
         db.execute("UPDATE orders SET status = 'open' WHERE id = %s", (order_id,))
     loaded = _load_order(order_id)
@@ -399,6 +437,7 @@ def station_tickets(station_key: str) -> list[dict]:
             "queue_number": r["queue_number"],
             "space": r["space_name"],
             "station": r["station_key"],
+            "modifiers": _item_mods(r["id"]),
         }
         for r in rows
     ]
