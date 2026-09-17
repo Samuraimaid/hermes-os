@@ -35,6 +35,20 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.4.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    """
+    CREATE TABLE IF NOT EXISTS staff (
+        id BIGSERIAL PRIMARY KEY,
+        venue_id BIGINT NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        pin_hash TEXT NOT NULL,
+        active BOOLEAN NOT NULL DEFAULT TRUE
+    )
+    """,
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.5.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

@@ -1,33 +1,103 @@
 import { useCallback, useEffect, useState } from "react";
 
-async function api(path, opts) {
-  const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
+async function api(path, opts = {}) {
+  const token = localStorage.getItem("hermes_token");
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(path, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    throw new Error("No autorizado");
+  }
   if (!res.ok) throw new Error(data.detail || "Error de API");
   return data;
 }
 
 export default function App() {
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hermes_user") || "null");
+    } catch {
+      return null;
+    }
+  });
   const [view, setView] = useState("piso");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  const caps = user?.caps || [];
+  const canFloor = caps.includes("floor") || caps.includes("admin");
+  const canKds = caps.includes("kds") || caps.includes("admin");
+  const canCash = caps.includes("cash") || caps.includes("admin");
+
+  async function enter() {
+    try {
+      setError("");
+      const session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      localStorage.setItem("hermes_token", session.token);
+      localStorage.setItem("hermes_user", JSON.stringify(session));
+      setUser(session);
+      setView(session.caps.includes("kds") && !session.caps.includes("floor") ? "kds" : session.caps.includes("cash") && !session.caps.includes("floor") ? "caja" : "piso");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function leave() {
+    api("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    setUser(null);
+    setPin("");
+  }
+
+  if (!user) {
+    return (
+      <main className="shell">
+        <div className="kicker">Hermes OS</div>
+        <h1>Entrar</h1>
+        <p className="tag">PIN del rol. Demo: 0000 dueño · 1111 mesero · 2222 cocina · 3333 caja</p>
+        {error && <p className="err">{error}</p>}
+        <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
+        <button className="primary" onClick={enter}>
+          Entrar
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main className="shell wide">
-      <div className="kicker">Hermes OS</div>
+      <div className="kicker">Hermes OS · {user.name} · {user.role}</div>
       <h1>Hermes OS</h1>
       <div className="tabs">
-        <button className={view === "piso" ? "tab on" : "tab"} onClick={() => setView("piso")}>
-          Piso
-        </button>
-        <button className={view === "kds" ? "tab on" : "tab"} onClick={() => setView("kds")}>
-          Estaciones
-        </button>
-        <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
-          Caja
+        {canFloor && (
+          <button className={view === "piso" ? "tab on" : "tab"} onClick={() => setView("piso")}>
+            Piso
+          </button>
+        )}
+        {canKds && (
+          <button className={view === "kds" ? "tab on" : "tab"} onClick={() => setView("kds")}>
+            Estaciones
+          </button>
+        )}
+        {canCash && (
+          <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
+            Caja
+          </button>
+        )}
+        <button className="tab" onClick={leave}>
+          Salir
         </button>
       </div>
-      {view === "piso" ? <FloorView /> : view === "kds" ? <KdsView /> : <CashView />}
+      {view === "piso" && canFloor && <FloorView />}
+      {view === "kds" && canKds && <KdsView />}
+      {view === "caja" && canCash && <CashView />}
     </main>
   );
 }

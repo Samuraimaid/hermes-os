@@ -123,6 +123,15 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_orders_venue_status ON orders (venue_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_order ON payments (order_id);
 
+CREATE TABLE IF NOT EXISTS staff (
+    id          BIGSERIAL PRIMARY KEY,
+    venue_id    BIGINT NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    role        TEXT NOT NULL,
+    pin_hash    TEXT NOT NULL,
+    active      BOOLEAN NOT NULL DEFAULT TRUE
+);
+
 INSERT INTO hermes_meta (key, value)
-VALUES ('schema_version', '0.4.0')
+VALUES ('schema_version', '0.5.0')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;

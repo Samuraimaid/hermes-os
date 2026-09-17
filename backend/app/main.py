@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from app import auth
 from app import cash as cash_svc
 from app import orders as order_svc
 from app.deployment import deployment_for
@@ -45,6 +47,10 @@ class PayIn(BaseModel):
     tip_cents: int = 0
 
 
+class LoginIn(BaseModel):
+    pin: str
+
+
 def current_profile() -> str:
     profile = settings.hermes_profile.strip().lower()
     return profile if profile in PROFILES else "restaurant"
@@ -84,6 +90,7 @@ async def lifespan(_app: FastAPI):
     try:
         apply_migrations()
         ensure_demo_venue()
+        auth.ensure_users()
     except Exception as exc:  # noqa: BLE001
         print(f"hermes: seed skipped ({exc})")
     yield
@@ -98,10 +105,22 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def require_role(request: Request, call_next):
+    cap = auth.cap_for_path(request.method, request.url.path)
+    if cap:
+        token = request.headers.get("authorization") or request.headers.get("x-hermes-token")
+        user = auth.resolve(token)
+        if not auth.allow(user, cap):
+            return JSONResponse({"detail": "No autorizado"}, status_code=401)
+    return await call_next(request)
+
+
 def _need_seed() -> dict:
     try:
         apply_migrations()
         seed = ensure_demo_venue()
+        auth.ensure_users()
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=503, detail=f"Base de datos no disponible: {exc}") from exc
     if not seed:
@@ -119,6 +138,18 @@ def _ok(fn, *args, **kwargs):
 @app.get("/health")
 def health():
     return {"ok": True, "name": settings.app_name}
+
+
+@app.post("/api/login")
+def login(body: LoginIn):
+    _need_seed()
+    return _ok(auth.login, body.pin)
+
+
+@app.post("/api/logout")
+def logout(request: Request):
+    auth.logout(request.headers.get("authorization") or request.headers.get("x-hermes-token"))
+    return {"ok": True}
 
 
 @app.get("/api/instance")
