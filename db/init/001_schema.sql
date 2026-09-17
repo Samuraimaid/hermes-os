@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS orders (
     -- open | sent | in_progress | ready | delivered | closed | void
     cover_count     INT,
     queue_number    INT,
+    dining_option   TEXT,
     notes           TEXT,
     opened_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at       TIMESTAMPTZ
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS order_items (
     status          TEXT NOT NULL DEFAULT 'queued',
     -- queued | prep | ready | held | void | served
     notes           TEXT,
+    price_cents     INT NOT NULL DEFAULT 0,
     sent_at         TIMESTAMPTZ,
     ready_at        TIMESTAMPTZ
 );
@@ -101,5 +103,5 @@ CREATE INDEX IF NOT EXISTS idx_products_venue ON products (venue_id);
 CREATE INDEX IF NOT EXISTS idx_orders_venue_status ON orders (venue_id, status);
 
 INSERT INTO hermes_meta (key, value)
-VALUES ('schema_version', '0.2.0')
+VALUES ('schema_version', '0.3.0')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;

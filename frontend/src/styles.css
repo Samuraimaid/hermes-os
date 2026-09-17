@@ -15,6 +15,18 @@ body {
 }
 
 .shell { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
+.shell.wide { max-width: 1080px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+.list { display: flex; flex-direction: column; gap: 6px; }
+.rowbtn, .primary {
+  font: inherit; cursor: pointer; text-align: left;
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; display: flex; justify-content: space-between; gap: 8px; width: 100%;
+}
+.rowbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.primary { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; justify-content: center; margin-top: 12px; }
+.muted { color: var(--muted); font-size: 13px; }
 .kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--muted); }
 h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
 .tag { margin: 8px 0 28px; color: var(--muted); font-style: italic; }

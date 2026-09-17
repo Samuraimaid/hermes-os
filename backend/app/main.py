@@ -2,13 +2,32 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from app.deployment import deployment_for
 from app.mechanisms import mechanism_for
+from app.migrate import apply as apply_migrations
+from app import orders as order_svc
 from app.profiles import PROFILES, resolve_modules
 from app.seed import ensure_demo_venue
 from app.serializers import product_out, space_out, station_out
 from app.settings import settings
+
+
+class OpenOrderIn(BaseModel):
+    space_id: int
+    cover_count: int | None = None
+    dining_option: str | None = None
+
+
+class AddItemIn(BaseModel):
+    product_id: int
+    qty: int = Field(default=1, ge=1)
+    notes: str | None = None
+
+
+class BumpIn(BaseModel):
+    action: str
 
 
 def current_profile() -> str:
@@ -48,19 +67,38 @@ def instance_payload(seed: dict | None = None) -> dict:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
+        apply_migrations()
         ensure_demo_venue()
-    except Exception as exc:  # noqa: BLE001 — boot should not die without DB
+    except Exception as exc:  # noqa: BLE001
         print(f"hermes: seed skipped ({exc})")
     yield
 
 
-app = FastAPI(title="Hermes OS", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Hermes OS", version="0.3.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _need_seed() -> dict:
+    try:
+        apply_migrations()
+        seed = ensure_demo_venue()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=503, detail=f"Base de datos no disponible: {exc}") from exc
+    if not seed:
+        raise HTTPException(status_code=503, detail="DATABASE_URL no configurada")
+    return seed
+
+
+def _ok(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/health")
@@ -79,27 +117,50 @@ def instance():
 
 @app.get("/api/spaces")
 def list_spaces():
-    seed = _need_seed()
-    return [space_out(s) for s in seed["spaces"]]
+    return [space_out(s) for s in _need_seed()["spaces"]]
 
 
 @app.get("/api/stations")
 def list_stations():
-    seed = _need_seed()
-    return [station_out(s) for s in seed["stations"]]
+    return [station_out(s) for s in _need_seed()["stations"]]
 
 
 @app.get("/api/products")
 def list_products():
-    seed = _need_seed()
-    return [product_out(p) for p in seed["products"]]
+    return [product_out(p) for p in _need_seed()["products"]]
 
 
-def _need_seed() -> dict:
-    try:
-        seed = ensure_demo_venue()
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=503, detail=f"Base de datos no disponible: {exc}") from exc
-    if not seed:
-        raise HTTPException(status_code=503, detail="DATABASE_URL no configurada")
-    return seed
+@app.get("/api/orders")
+def list_orders():
+    _need_seed()
+    return _ok(order_svc.list_open)
+
+
+@app.post("/api/orders")
+def create_order(body: OpenOrderIn):
+    _need_seed()
+    return _ok(order_svc.open_order, body.space_id, body.cover_count, body.dining_option)
+
+
+@app.post("/api/orders/{order_id}/items")
+def add_item(order_id: int, body: AddItemIn):
+    _need_seed()
+    return _ok(order_svc.add_item, order_id, body.product_id, body.qty, body.notes)
+
+
+@app.post("/api/orders/{order_id}/send")
+def send_order(order_id: int):
+    _need_seed()
+    return _ok(order_svc.send_order, order_id)
+
+
+@app.post("/api/items/{item_id}/bump")
+def bump_item(item_id: int, body: BumpIn):
+    _need_seed()
+    return _ok(order_svc.bump_item, item_id, body.action)
+
+
+@app.get("/api/stations/{station_key}/tickets")
+def station_tickets(station_key: str):
+    _need_seed()
+    return _ok(order_svc.station_tickets, station_key)

@@ -83,4 +83,4 @@ hermes-os/
 
 ## Estado
 
-Núcleo 0.2: esquema, mecanismos por rubro y seed de un local demo. Siguiente: abrir una unidad y enviar ítems.
+Núcleo 0.3: se puede abrir una unidad, armar precuenta y enviar a estación según el rubro.
