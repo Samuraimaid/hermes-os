@@ -38,6 +38,10 @@ La facturación fiscal (Hacienda, DGI, SAT u otra autoridad) no forma parte del 
 | Datos | PostgreSQL 16 |
 | Arranque | Docker Compose |
 
+## Continuar en otro chat (VS Code / Grok)
+
+Lee `GROK.md` y `docs/CONTEXTO.md`. Ahí está el hilo, las decisiones y el siguiente paso.
+
 ## Arranque
 
 ```bash
