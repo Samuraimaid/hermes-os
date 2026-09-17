@@ -16,6 +16,8 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
    - `replenish_display_stations` (buffet): registra consumo de isla, no una comanda de mesa.
 4. `GET /api/stations/{key}/tickets` — lo que ve cocina o barra.
 5. `POST /api/items/{id}/bump` `{ action: prep | ready | served }`
+6. `POST /api/orders/{id}/deliver` — todo listo; sale a sala. Falla si cocina sigue con cola.
+7. `POST /api/orders/{id}/close` — sale de la pista. **No cobra.** Solo si está lista o entregada.
 
 `GET /api/orders/{id}` no hace falta: el cuerpo de cada POST ya trae la orden y su **precuenta**.
 
