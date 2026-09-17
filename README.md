@@ -1,0 +1,80 @@
+# Hermes OS
+
+Plantilla de operación para un local que vende comida o bebida.
+
+Un molde. Muchos locales. Cada instalación lleva su marca, su carta y solo los módulos que necesita.
+
+> El mensaje llega.
+
+## Qué es
+
+Hermes OS no es el sistema de un solo negocio. Es una base que se adapta a:
+
+| Rubro | Perfil |
+|---|---|
+| Restaurante de mesa | `restaurant` |
+| Bar | `bar` |
+| Buffet | `buffet` |
+| Comida rápida | `qsr` |
+| Tienda de convivencia / abarrotes con comida | `convenience` |
+
+Los módulos se encienden o se apagan por cliente:
+
+- **Sala** — mesas y servicio en piso
+- **Barra** — tickets de bebidas y cuentas de barra
+- **Cocina** — pantalla de producción (KDS)
+- **Mostrador** — venta rápida de balcón
+- **Pantallas** — carta y publicidad en displays
+- **Caja** — cobro, ticket, corte de turno
+
+La facturación fiscal (Hacienda, DGI, SAT u otra autoridad) no forma parte del núcleo. Se agrega por país cuando el cliente la exige.
+
+## Stack
+
+| Capa | Tecnología |
+|---|---|
+| API | FastAPI + WebSockets |
+| App | React + Vite |
+| Datos | PostgreSQL 16 |
+| Arranque | Docker Compose |
+
+## Arranque
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+- App: http://localhost:5173
+- API: http://localhost:8000
+- Salud: http://localhost:8000/health
+- Docs: http://localhost:8000/docs
+
+Sin Docker, el backend y el frontend también pueden correr por separado (ver `docs/DESARROLLO.md`).
+
+## Perfil de un local
+
+En `.env`:
+
+```env
+HERMES_PROFILE=bar
+HERMES_MODULES=barra,cocina,caja,pantallas
+```
+
+Si `HERMES_MODULES` va vacío, Hermes usa los módulos por defecto de ese perfil. Detalle en `docs/RUBROS.md` y `docs/MODULOS.md`.
+
+## Estructura
+
+```
+hermes-os/
+├── backend/          API
+├── frontend/         Apps de sala, caja, cocina y pantallas
+├── db/init/          Esquema inicial
+├── docs/             Producto y operación
+├── docker-compose.yml
+└── .env.example
+```
+
+## Estado
+
+Proyecto nuevo. Núcleo y contratos primero; cada módulo se construye después, sin copiar un local existente.
