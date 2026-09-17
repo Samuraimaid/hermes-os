@@ -164,3 +164,9 @@ def bump_item(item_id: int, body: BumpIn):
 def station_tickets(station_key: str):
     _need_seed()
     return _ok(order_svc.station_tickets, station_key)
+
+
+@app.get("/api/kds")
+def kds_board():
+    _need_seed()
+    return _ok(order_svc.kds_board)

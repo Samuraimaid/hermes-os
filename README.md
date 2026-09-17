@@ -83,4 +83,4 @@ hermes-os/
 
 ## Estado
 
-Núcleo 0.3: se puede abrir una unidad, armar precuenta y enviar a estación según el rubro.
+Núcleo 0.3: orden + precuenta + envío + pantalla de estaciones (KDS).

@@ -22,3 +22,11 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 ## Dining option
 
 `dine_in` | `takeout` | `delivery`. No cambia las tablas; cambia la etiqueta del ticket.
+
+
+## Pantalla de estaciones
+
+`GET /api/kds` agrupa los tickets por estación de producción.
+
+En el hub, pestaña **Estaciones**. El cocinero pasa `queued → prep → ready`.
+La vista se refresca cada 4 segundos. No hace falta WebSocket todavía.

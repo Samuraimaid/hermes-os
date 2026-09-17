@@ -344,5 +344,31 @@ def station_tickets(station_key: str) -> list[dict]:
     ]
 
 
+def kds_board() -> dict:
+    venue = _venue()
+    mech = mechanism_for(_profile())
+    stations = db.fetch_all(
+        """
+        SELECT * FROM stations
+        WHERE venue_id = %s AND active AND kind IN ('kitchen', 'bar', 'expo', 'display')
+        ORDER BY sort
+        """,
+        (venue["id"],),
+    )
+    return {
+        "kitchen_mode": mech["kitchen_mode"],
+        "fulfillment": mech["fulfillment"],
+        "stations": [
+            {
+                "key": s["key"],
+                "name": s["name"],
+                "kind": s["kind"],
+                "tickets": station_tickets(s["key"]),
+            }
+            for s in stations
+        ],
+    }
+
+
 def modules_ok() -> list[str]:
     return resolve_modules(_profile(), settings.hermes_modules)

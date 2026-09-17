@@ -50,3 +50,11 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
 .err { color: #8a2a2a; }
 .summary { margin: 14px 0 4px; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .foot { margin-top: 28px; font-size: 13px; color: var(--muted); }
+
+.tabs { display: flex; gap: 8px; margin: 8px 0 16px; }
+.tab { font: inherit; cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; }
+.tab.on { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; }
+.ticket { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; background: #fff; }
+.ticket.prep { border-color: #c4a35a; }
+.ticket header { display: flex; justify-content: space-between; gap: 8px; }
+.actions { display: flex; gap: 8px; margin-top: 8px; }
