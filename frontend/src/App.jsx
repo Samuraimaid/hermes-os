@@ -294,6 +294,7 @@ function CashView() {
   const [opening, setOpening] = useState("0");
   const [counted, setCounted] = useState("0");
   const [tipPct, setTipPct] = useState(0);
+  const [payAmt, setPayAmt] = useState({});
   const [error, setError] = useState("");
   const [closed, setClosed] = useState(null);
 
@@ -381,14 +382,41 @@ function CashView() {
               ))}
             </div>
             {orders.length === 0 && <p className="muted">No hay cuentas en pista.</p>}
-            {orders.map((o) => (
+            {orders.map((o) => {
+              const due = o.due_cents ?? o.precuenta.subtotal_cents;
+              const typed = payAmt[o.id];
+              const amount = typed === undefined ? money(due) : typed;
+              return (
               <div className="ticket" key={o.id}>
                 <header>
                   <strong>
                     {o.space?.name || `#${o.id}`} · {o.status}
                   </strong>
-                  <span>{money(o.precuenta.subtotal_cents)}</span>
+                  <span>
+                    pagado {money(o.paid_cents)} · falta {money(due)}
+                  </span>
                 </header>
+                <input
+                  className="field"
+                  value={amount}
+                  onChange={(e) => setPayAmt({ ...payAmt, [o.id]: e.target.value })}
+                />
+                <div className="actions">
+                  {[2, 3].map((n) => (
+                    <button
+                      key={n}
+                      className="tab"
+                      onClick={() =>
+                        setPayAmt({ ...payAmt, [o.id]: money(Math.ceil(due / n)) })
+                      }
+                    >
+                      1/{n}
+                    </button>
+                  ))}
+                  <button className="tab" onClick={() => setPayAmt({ ...payAmt, [o.id]: money(due) })}>
+                    Todo
+                  </button>
+                </div>
                 <div className="actions">
                   {["cash", "card", "transfer"].map((m) => (
                     <button
@@ -396,16 +424,21 @@ function CashView() {
                       className="rowbtn"
                       onClick={() =>
                         run(async () => {
-                          const bal = await api(`/api/orders/${o.id}/balance`);
-                          if (!bal.due_cents) throw new Error("Ya está pagada");
-                          const tip_cents = Math.round((bal.due_cents * tipPct) / 100);
+                          const cents = Math.round(Number(amount) * 100);
+                          if (!cents) throw new Error("Indica un monto");
+                          const tip_cents = Math.round((cents * tipPct) / 100);
                           await api(`/api/orders/${o.id}/pay`, {
                             method: "POST",
                             body: JSON.stringify({
                               method: m,
-                              amount_cents: bal.due_cents,
+                              amount_cents: cents,
                               tip_cents,
                             }),
+                          });
+                          setPayAmt((prev) => {
+                            const next = { ...prev };
+                            delete next[o.id];
+                            return next;
                           });
                         })
                       }
@@ -415,6 +448,8 @@ function CashView() {
                   ))}
                 </div>
               </div>
+              );
+            })}
             ))}
           </section>
           <section className="card" style={{ marginTop: 18 }}>

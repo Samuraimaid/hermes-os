@@ -53,6 +53,11 @@ def order_out(bundle: dict) -> dict:
     items = bundle["items"]
     space = bundle.get("space")
     subtotal = sum((i.get("price_cents") or 0) * i["qty"] for i in items if i["status"] != "void")
+    paid_row = db.fetch_one(
+        "SELECT COALESCE(SUM(amount_cents), 0) AS paid FROM payments WHERE order_id = %s",
+        (order["id"],),
+    )
+    paid = paid_row["paid"] if paid_row else 0
     return {
         "id": order["id"],
         "status": order["status"],
@@ -85,6 +90,8 @@ def order_out(bundle: dict) -> dict:
             "item_count": sum(i["qty"] for i in items if i["status"] != "void"),
             "subtotal_cents": subtotal,
         },
+        "paid_cents": paid,
+        "due_cents": max(0, subtotal - paid),
     }
 
 
