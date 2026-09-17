@@ -34,9 +34,18 @@ export default function App() {
               <strong>{data.profile_label}</strong>
             </div>
             <div className="row">
-              <span className="label">Entorno</span>
-              <strong>{data.env}</strong>
+              <span className="label">Unidad</span>
+              <strong>{data.mechanism?.order_unit}</strong>
             </div>
+            <div className="row">
+              <span className="label">Envío</span>
+              <strong>{data.mechanism?.fulfillment}</strong>
+            </div>
+            <div className="row">
+              <span className="label">Cobro</span>
+              <strong>{data.mechanism?.payment}</strong>
+            </div>
+            <p className="summary">{data.mechanism?.summary}</p>
             <div className="pills">
               {(data.modules || []).map((m) => (
                 <span className="pill" key={m}>
@@ -48,7 +57,7 @@ export default function App() {
         )}
       </section>
 
-      <p className="foot">Núcleo vacío a propósito. Los módulos se construyen encima de esta instancia.</p>
+      <p className="foot">Cambia HERMES_PROFILE para ver otro rubro. La carta y los espacios se crean al arrancar.</p>
     </main>
   );
 }

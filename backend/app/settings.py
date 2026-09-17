@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     app_env: str = "development"
     hermes_profile: str = "restaurant"
     hermes_modules: str = ""
+    database_url: str = ""
+    venue_name: str = "Local demo"
+    venue_slug: str = "demo"
 
 
 settings = Settings()

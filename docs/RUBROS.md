@@ -28,3 +28,5 @@ HERMES_MODULES=sala,barra,cocina,caja,pantallas
 **Comida rápida.** Unidad = turno en mostrador. Un flujo: pedir → producir → entregar.
 
 **Convivencia.** Unidad = ticket de caja. Carta corta, antojitos, bebidas. Cocina opcional.
+
+El detalle operativo (envío y cobro) está en `MECANISMOS.md`.

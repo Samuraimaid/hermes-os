@@ -61,7 +61,11 @@ HERMES_PROFILE=bar
 HERMES_MODULES=barra,cocina,caja,pantallas
 ```
 
-Si `HERMES_MODULES` va vacío, Hermes usa los módulos por defecto de ese perfil. Detalle en `docs/RUBROS.md` y `docs/MODULOS.md`.
+Si `HERMES_MODULES` va vacío, Hermes usa los módulos por defecto de ese perfil.
+
+El perfil también cambia el **mecanismo**: unidad de trabajo (mesa, cuenta, turno, línea, caja), cómo viaja el pedido y cuándo se cobra. Ver `docs/MECANISMOS.md`.
+
+Cambia `HERMES_PROFILE` y vuelve a levantar. El seed crea espacios, estaciones y una carta genérica de ese rubro.
 
 ## Estructura
 
@@ -77,4 +81,4 @@ hermes-os/
 
 ## Estado
 
-Proyecto nuevo. Núcleo y contratos primero; cada módulo se construye después, sin copiar un local existente.
+Núcleo 0.2: esquema, mecanismos por rubro y seed de un local demo. Siguiente: abrir una unidad y enviar ítems.

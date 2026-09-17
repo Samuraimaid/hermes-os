@@ -36,4 +36,5 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
   font-size: 13px;
 }
 .err { color: #8a2a2a; }
+.summary { margin: 14px 0 4px; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .foot { margin-top: 28px; font-size: 13px; color: var(--muted); }
