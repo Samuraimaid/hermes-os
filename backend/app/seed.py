@@ -8,6 +8,22 @@ from app.profiles import PROFILES, resolve_modules
 from app.settings import settings
 
 
+def _ensure_kiosk_space(venue_id: int) -> None:
+    row = db.fetch_one(
+        "SELECT id FROM spaces WHERE venue_id = %s AND key = %s",
+        (venue_id, "kiosko"),
+    )
+    if row:
+        return
+    db.execute(
+        """
+        INSERT INTO spaces (venue_id, key, name, kind, zone, capacity, sort)
+        VALUES (%s, 'kiosko', 'Kiosco', 'kiosk', 'Autoservicio', None, 90)
+        """,
+        (venue_id,),
+    )
+
+
 def _ensure_modifiers(venue_id: int) -> None:
     products = db.fetch_all("SELECT id, sku FROM products WHERE venue_id = %s", (venue_id,))
     for product in products:
@@ -189,6 +205,7 @@ def ensure_demo_venue() -> dict | None:
             )
 
     _ensure_modifiers(vid)
+    _ensure_kiosk_space(vid)
 
     return {
         "venue": venue,

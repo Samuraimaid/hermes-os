@@ -13,6 +13,7 @@ ORIGIN_BY_SPACE = {
     "counter": "mostrador",
     "queue": "mostrador",
     "line": "mostrador",
+    "kiosk": "kiosko",
 }
 
 
@@ -135,23 +136,25 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
     if not space:
         raise ValueError("Espacio no encontrado")
 
-    existing = db.fetch_one(
-        """
-        SELECT id FROM orders
-        WHERE venue_id = %s AND space_id = %s AND status = ANY(%s)
-        """,
-        (venue["id"], space_id, list(ACTIVE)),
-    )
-    if existing:
-        bundle = _load_order(existing["id"])
-        assert bundle
-        return order_out(bundle)
+    shared = space["kind"] in {"kiosk", "queue", "counter"}
+    if not shared:
+        existing = db.fetch_one(
+            """
+            SELECT id FROM orders
+            WHERE venue_id = %s AND space_id = %s AND status = ANY(%s)
+            """,
+            (venue["id"], space_id, list(ACTIVE)),
+        )
+        if existing:
+            bundle = _load_order(existing["id"])
+            assert bundle
+            return order_out(bundle)
 
     origin = ORIGIN_BY_SPACE.get(space["kind"], "mostrador")
     option = dining_option or ("dine_in" if space["kind"] in {"table", "tab", "line"} else "takeout")
     covers = cover_count if mech["needs_cover_count"] else None
     queue_no = None
-    if mech["needs_queue_number"]:
+    if mech["needs_queue_number"] or space["kind"] == "kiosk":
         row = db.fetch_one(
             """
             SELECT COALESCE(MAX(queue_number), 0) + 1 AS n
@@ -199,6 +202,7 @@ def add_item(
         "sala": product["sold_in_sala"],
         "barra": product["sold_in_barra"],
         "mostrador": product["sold_in_mostrador"],
+        "kiosko": product["sold_in_sala"] or product["sold_in_barra"] or product["sold_in_mostrador"],
     }
     if not allowed.get(origin, True):
         raise ValueError(f"Ese producto no se vende en {origin}")

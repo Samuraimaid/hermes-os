@@ -7,10 +7,11 @@ from app import db
 from app.settings import settings
 
 ROLES = {
-    "owner": {"floor", "kds", "cash", "admin"},
+    "owner": {"floor", "kds", "cash", "kiosk", "admin"},
     "waiter": {"floor"},
     "kitchen": {"kds"},
     "cashier": {"cash", "floor"},
+    "kiosk": {"kiosk"},
 }
 
 DEMO = (
@@ -18,6 +19,7 @@ DEMO = (
     ("Mesero", "waiter", "1111"),
     ("Cocina", "kitchen", "2222"),
     ("Cajero", "cashier", "3333"),
+    ("Kiosco", "kiosk", "4444"),
 )
 
 _tokens: dict[str, dict] = {}
@@ -38,10 +40,13 @@ def ensure_users() -> None:
     vid = _venue_id()
     if not vid:
         return
-    existing = db.fetch_one("SELECT id FROM staff WHERE venue_id = %s LIMIT 1", (vid,))
-    if existing:
-        return
     for name, role, pin in DEMO:
+        found = db.fetch_one(
+            "SELECT id FROM staff WHERE venue_id = %s AND role = %s",
+            (vid, role),
+        )
+        if found:
+            continue
         db.execute(
             """
             INSERT INTO staff (venue_id, name, role, pin_hash, active)
@@ -114,4 +119,9 @@ def allow(user: dict | None, cap: str | None) -> bool:
         return True
     if not user:
         return False
-    return cap in ROLES.get(user["role"], set()) or "admin" in ROLES.get(user["role"], set())
+    have = ROLES.get(user["role"], set())
+    if "admin" in have:
+        return True
+    if cap in have:
+        return True
+    return cap == "floor" and "kiosk" in have

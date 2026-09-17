@@ -31,6 +31,7 @@ export default function App() {
   const canFloor = caps.includes("floor") || caps.includes("admin");
   const canKds = caps.includes("kds") || caps.includes("admin");
   const canCash = caps.includes("cash") || caps.includes("admin");
+  const canKiosk = caps.includes("kiosk") || caps.includes("admin");
 
   async function enter() {
     try {
@@ -42,7 +43,15 @@ export default function App() {
       localStorage.setItem("hermes_token", session.token);
       localStorage.setItem("hermes_user", JSON.stringify(session));
       setUser(session);
-      setView(session.caps.includes("kds") && !session.caps.includes("floor") ? "kds" : session.caps.includes("cash") && !session.caps.includes("floor") ? "caja" : "piso");
+      setView(
+        session.caps.includes("kiosk") && !session.caps.includes("admin")
+          ? "kiosko"
+          : session.caps.includes("kds") && !session.caps.includes("floor")
+            ? "kds"
+            : session.caps.includes("cash") && !session.caps.includes("floor")
+              ? "caja"
+              : "piso"
+      );
     } catch (e) {
       setError(e.message);
     }
@@ -61,7 +70,7 @@ export default function App() {
       <main className="shell">
         <div className="kicker">Hermes OS</div>
         <h1>Entrar</h1>
-        <p className="tag">PIN del rol. Demo: 0000 dueño · 1111 mesero · 2222 cocina · 3333 caja</p>
+        <p className="tag">PIN demo: 0000 dueño · 1111 mesero · 2222 cocina · 3333 caja · 4444 kiosco</p>
         {error && <p className="err">{error}</p>}
         <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
         <button className="primary" onClick={enter}>
@@ -91,6 +100,11 @@ export default function App() {
             Caja
           </button>
         )}
+        {canKiosk && (
+          <button className={view === "kiosko" ? "tab on" : "tab"} onClick={() => setView("kiosko")}>
+            Kiosco
+          </button>
+        )}
         <button className="tab" onClick={leave}>
           Salir
         </button>
@@ -98,6 +112,7 @@ export default function App() {
       {view === "piso" && canFloor && <FloorView />}
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
+      {view === "kiosko" && canKiosk && <KioskView />}
     </main>
   );
 }
@@ -603,6 +618,160 @@ function CashView() {
           Diferencia: {money(closed.totals.difference_cents)} (contado menos esperado)
         </p>
       )}
+    </>
+  );
+}
+
+function KioskView() {
+  const [products, setProducts] = useState([]);
+  const [space, setSpace] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [option, setOption] = useState("dine_in");
+  const [pending, setPending] = useState(null);
+  const [picked, setPicked] = useState([]);
+  const [ticket, setTicket] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    Promise.all([api("/api/products"), api("/api/spaces")])
+      .then(([pr, sp]) => {
+        setProducts(pr);
+        setSpace(sp.find((s) => s.kind === "kiosk") || sp.find((s) => s.kind === "queue") || sp[0]);
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  function addLine(product, modifierIds) {
+    const mods = (product.modifiers || []).filter((m) => modifierIds.includes(m.id));
+    const extra = mods.reduce((n, m) => n + (m.price_delta_cents || 0), 0);
+    setCart([
+      ...cart,
+      {
+        key: `${product.id}-${Date.now()}`,
+        product_id: product.id,
+        name: product.name,
+        price_cents: product.price_cents + extra,
+        modifier_ids: modifierIds,
+        modifiers: mods,
+      },
+    ]);
+    setPending(null);
+    setPicked([]);
+  }
+
+  async function place() {
+    try {
+      setError("");
+      if (!space) throw new Error("No hay kiosco configurado");
+      if (!cart.length) throw new Error("Elige algo de la carta");
+      const order = await api("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({ space_id: space.id, dining_option: option }),
+      });
+      for (const line of cart) {
+        await api(`/api/orders/${order.id}/items`, {
+          method: "POST",
+          body: JSON.stringify({
+            product_id: line.product_id,
+            qty: 1,
+            modifier_ids: line.modifier_ids,
+          }),
+        });
+      }
+      const sent = await api(`/api/orders/${order.id}/send`, { method: "POST" });
+      setTicket(sent);
+      setCart([]);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  const total = cart.reduce((n, l) => n + l.price_cents, 0);
+
+  if (ticket) {
+    return (
+      <section className="card">
+        <h2>Pedido recibido</h2>
+        <p className="tag" style={{ fontSize: 42, margin: "12px 0" }}>
+          {ticket.queue_number ? `Turno ${ticket.queue_number}` : `Pedido #${ticket.id}`}
+        </p>
+        <p className="muted">Pasa a recoger cuando llamen tu número.</p>
+        <button className="primary" onClick={() => setTicket(null)}>
+          Nuevo pedido
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <p className="tag">Pide aquí. Pagas en caja o al recoger, según el local.</p>
+      {error && <p className="err">{error}</p>}
+      <div className="actions" style={{ marginBottom: 16 }}>
+        <button className={option === "dine_in" ? "tab on" : "tab"} onClick={() => setOption("dine_in")}>
+          Comer aquí
+        </button>
+        <button className={option === "takeout" ? "tab on" : "tab"} onClick={() => setOption("takeout")}>
+          Para llevar
+        </button>
+      </div>
+      <div className="grid">
+        <section className="card">
+          <h2>Carta</h2>
+          {products.map((p) => (
+            <button
+              key={p.id}
+              className="rowbtn"
+              onClick={() => {
+                if (p.modifiers?.length) {
+                  setPending(p);
+                  setPicked([]);
+                } else addLine(p, []);
+              }}
+            >
+              <strong>{p.name}</strong>
+              <span>{money(p.price_cents)}</span>
+            </button>
+          ))}
+          {pending && (
+            <div className="ticket">
+              <strong>{pending.name}</strong>
+              {pending.modifiers.map((m) => (
+                <label key={m.id} className="muted" style={{ display: "block", marginTop: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(m.id)}
+                    onChange={() =>
+                      setPicked(picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id])
+                    }
+                  />{" "}
+                  {m.name}
+                </label>
+              ))}
+              <button className="primary" onClick={() => addLine(pending, picked)}>
+                Sumar
+              </button>
+            </div>
+          )}
+        </section>
+        <section className="card">
+          <h2>Tu pedido</h2>
+          {cart.length === 0 && <p className="muted">Vacío</p>}
+          {cart.map((l) => (
+            <div className="row" key={l.key}>
+              <span>
+                {l.name}
+                {l.modifiers.length ? ` (${l.modifiers.map((m) => m.name).join(", ")})` : ""}
+              </span>
+              <span>{money(l.price_cents)}</span>
+            </div>
+          ))}
+          <p className="summary">Total {money(total)}</p>
+          <button className="primary" disabled={!cart.length} onClick={place}>
+            Enviar pedido
+          </button>
+        </section>
+      </div>
     </>
   );
 }
