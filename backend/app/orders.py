@@ -5,7 +5,7 @@ from app.mechanisms import mechanism_for
 from app.profiles import PROFILES, resolve_modules
 from app.settings import settings
 
-ACTIVE = ("open", "sent", "in_progress", "ready")
+ACTIVE = ("open", "sent", "in_progress", "ready", "delivered")
 
 ORIGIN_BY_SPACE = {
     "table": "sala",
@@ -307,6 +307,59 @@ def _refresh_order_status(order_id: int) -> None:
     else:
         next_status = "sent"
     db.execute("UPDATE orders SET status = %s WHERE id = %s AND status <> 'closed'", (next_status, order_id))
+
+
+def _live_items(bundle: dict) -> list[dict]:
+    return [i for i in bundle["items"] if i["status"] != "void"]
+
+
+def deliver_order(order_id: int) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    order = bundle["order"]
+    if order["status"] in {"closed", "void"}:
+        raise ValueError("La orden ya está cerrada")
+    live = _live_items(bundle)
+    if not live:
+        raise ValueError("No hay ítems para entregar")
+    pending = [i for i in live if i["status"] in {"queued", "prep"}]
+    if pending:
+        raise ValueError("Todavía hay ítems en cocina o sin enviar")
+    with db.connect() as conn:
+        conn.execute(
+            """
+            UPDATE order_items
+            SET status = 'served', ready_at = COALESCE(ready_at, now())
+            WHERE order_id = %s AND status IN ('ready', 'served')
+            """,
+            (order_id,),
+        )
+        conn.execute(
+            "UPDATE orders SET status = 'delivered' WHERE id = %s",
+            (order_id,),
+        )
+    loaded = _load_order(order_id)
+    assert loaded
+    return order_out(loaded)
+
+
+def close_order(order_id: int) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    order = bundle["order"]
+    if order["status"] in {"closed", "void"}:
+        raise ValueError("La orden ya está cerrada")
+    if order["status"] not in {"ready", "delivered"}:
+        raise ValueError("Solo se cierra cuando está lista o entregada")
+    db.execute(
+        "UPDATE orders SET status = 'closed', closed_at = now() WHERE id = %s",
+        (order_id,),
+    )
+    loaded = _load_order(order_id)
+    assert loaded
+    return order_out(loaded)
 
 
 def station_tickets(station_key: str) -> list[dict]:

@@ -154,6 +154,18 @@ def send_order(order_id: int):
     return _ok(order_svc.send_order, order_id)
 
 
+@app.post("/api/orders/{order_id}/deliver")
+def deliver_order(order_id: int):
+    _need_seed()
+    return _ok(order_svc.deliver_order, order_id)
+
+
+@app.post("/api/orders/{order_id}/close")
+def close_order(order_id: int):
+    _need_seed()
+    return _ok(order_svc.close_order, order_id)
+
+
 @app.post("/api/items/{item_id}/bump")
 def bump_item(item_id: int, body: BumpIn):
     _need_seed()

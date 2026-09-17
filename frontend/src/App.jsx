@@ -157,6 +157,32 @@ function FloorView() {
               >
                 Enviar
               </button>
+              {(current.status === "ready" || current.status === "delivered") && (
+                <button
+                  className="rowbtn"
+                  onClick={() =>
+                    run(async () => {
+                      const order = await api(`/api/orders/${current.id}/deliver`, { method: "POST" });
+                      setCurrent(order);
+                    })
+                  }
+                >
+                  Entregar
+                </button>
+              )}
+              {(current.status === "ready" || current.status === "delivered") && (
+                <button
+                  className="primary"
+                  onClick={() =>
+                    run(async () => {
+                      const order = await api(`/api/orders/${current.id}/close`, { method: "POST" });
+                      setCurrent(order);
+                    })
+                  }
+                >
+                  Cerrar pista
+                </button>
+              )}
             </>
           )}
         </section>
