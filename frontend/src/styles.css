@@ -58,3 +58,7 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
 .ticket.prep { border-color: #c4a35a; }
 .ticket header { display: flex; justify-content: space-between; gap: 8px; }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
+.field {
+  font: inherit; width: 100%; margin: 8px 0; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+}
