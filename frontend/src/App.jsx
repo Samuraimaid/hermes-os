@@ -23,8 +23,11 @@ export default function App() {
         <button className={view === "kds" ? "tab on" : "tab"} onClick={() => setView("kds")}>
           Estaciones
         </button>
+        <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
+          Caja
+        </button>
       </div>
-      {view === "piso" ? <FloorView /> : <KdsView />}
+      {view === "piso" ? <FloorView /> : view === "kds" ? <KdsView /> : <CashView />}
     </main>
   );
 }
@@ -277,6 +280,151 @@ function KdsView() {
           </section>
         ))}
       </div>
+    </>
+  );
+}
+
+function money(cents) {
+  return ((cents || 0) / 100).toFixed(2);
+}
+
+function CashView() {
+  const [shift, setShift] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [opening, setOpening] = useState("0");
+  const [counted, setCounted] = useState("0");
+  const [error, setError] = useState("");
+  const [closed, setClosed] = useState(null);
+
+  async function refresh() {
+    const [sh, ords] = await Promise.all([api("/api/shift"), api("/api/orders")]);
+    setShift(sh);
+    setOrders(ords);
+  }
+
+  useEffect(() => {
+    refresh().catch((e) => setError(e.message));
+  }, []);
+
+  async function run(fn) {
+    try {
+      setError("");
+      await fn();
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <>
+      <p className="tag">Turno de caja. Ticket interno, no factura fiscal.</p>
+      {error && <p className="err">{error}</p>}
+      {!shift && (
+        <section className="card">
+          <h2>Abrir turno</h2>
+          <p className="muted">Fondo inicial en efectivo</p>
+          <input className="field" value={opening} onChange={(e) => setOpening(e.target.value)} />
+          <button
+            className="primary"
+            onClick={() =>
+              run(async () => {
+                await api("/api/shift/open", {
+                  method: "POST",
+                  body: JSON.stringify({ opening_cash_cents: Math.round(Number(opening) * 100) }),
+                });
+              })
+            }
+          >
+            Abrir caja
+          </button>
+        </section>
+      )}
+      {shift && (
+        <>
+          <section className="card">
+            <h2>Turno #{shift.id}</h2>
+            <div className="row">
+              <span className="label">Fondo</span>
+              <strong>{money(shift.opening_cash_cents)}</strong>
+            </div>
+            <div className="row">
+              <span className="label">Ventas</span>
+              <strong>{money(shift.totals.sales_cents)}</strong>
+            </div>
+            <div className="row">
+              <span className="label">Efectivo esperado</span>
+              <strong>{money(shift.totals.expected_cash_cents)}</strong>
+            </div>
+            <div className="row">
+              <span className="label">Propinas</span>
+              <strong>{money(shift.totals.tips_cents)}</strong>
+            </div>
+            <p className="muted">
+              Efectivo {money(shift.totals.by_method.cash)} · Tarjeta {money(shift.totals.by_method.card)} ·
+              Transfer {money(shift.totals.by_method.transfer)}
+            </p>
+          </section>
+          <section className="card" style={{ marginTop: 18 }}>
+            <h2>Cobrar órdenes abiertas</h2>
+            {orders.length === 0 && <p className="muted">No hay cuentas en pista.</p>}
+            {orders.map((o) => (
+              <div className="ticket" key={o.id}>
+                <header>
+                  <strong>
+                    {o.space?.name || `#${o.id}`} · {o.status}
+                  </strong>
+                  <span>{money(o.precuenta.subtotal_cents)}</span>
+                </header>
+                <div className="actions">
+                  {["cash", "card", "transfer"].map((m) => (
+                    <button
+                      key={m}
+                      className="rowbtn"
+                      onClick={() =>
+                        run(async () => {
+                          const bal = await api(`/api/orders/${o.id}/balance`);
+                          if (!bal.due_cents) throw new Error("Ya está pagada");
+                          await api(`/api/orders/${o.id}/pay`, {
+                            method: "POST",
+                            body: JSON.stringify({ method: m, amount_cents: bal.due_cents }),
+                          });
+                        })
+                      }
+                    >
+                      {m === "cash" ? "Efectivo" : m === "card" ? "Tarjeta" : "Transfer"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </section>
+          <section className="card" style={{ marginTop: 18 }}>
+            <h2>Cerrar turno</h2>
+            <p className="muted">Efectivo contado en el cajón</p>
+            <input className="field" value={counted} onChange={(e) => setCounted(e.target.value)} />
+            <button
+              className="primary"
+              onClick={() =>
+                run(async () => {
+                  const out = await api("/api/shift/close", {
+                    method: "POST",
+                    body: JSON.stringify({ counted_cash_cents: Math.round(Number(counted) * 100) }),
+                  });
+                  setClosed(out);
+                })
+              }
+            >
+              Cerrar caja
+            </button>
+          </section>
+        </>
+      )}
+      {closed && (
+        <p className="summary">
+          Diferencia: {money(closed.totals.difference_cents)} (contado menos esperado)
+        </p>
+      )}
     </>
   );
 }

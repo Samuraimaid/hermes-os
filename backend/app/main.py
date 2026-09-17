@@ -4,10 +4,11 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app import cash as cash_svc
+from app import orders as order_svc
 from app.deployment import deployment_for
 from app.mechanisms import mechanism_for
 from app.migrate import apply as apply_migrations
-from app import orders as order_svc
 from app.profiles import PROFILES, resolve_modules
 from app.seed import ensure_demo_venue
 from app.serializers import product_out, space_out, station_out
@@ -28,6 +29,20 @@ class AddItemIn(BaseModel):
 
 class BumpIn(BaseModel):
     action: str
+
+
+class OpenShiftIn(BaseModel):
+    opening_cash_cents: int = 0
+
+
+class CloseShiftIn(BaseModel):
+    counted_cash_cents: int
+
+
+class PayIn(BaseModel):
+    method: str
+    amount_cents: int
+    tip_cents: int = 0
 
 
 def current_profile() -> str:
@@ -182,3 +197,33 @@ def station_tickets(station_key: str):
 def kds_board():
     _need_seed()
     return _ok(order_svc.kds_board)
+
+
+@app.get("/api/shift")
+def get_shift():
+    _need_seed()
+    return _ok(cash_svc.current_shift)
+
+
+@app.post("/api/shift/open")
+def open_shift(body: OpenShiftIn):
+    _need_seed()
+    return _ok(cash_svc.open_shift, body.opening_cash_cents)
+
+
+@app.post("/api/shift/close")
+def close_shift(body: CloseShiftIn):
+    _need_seed()
+    return _ok(cash_svc.close_shift, body.counted_cash_cents)
+
+
+@app.get("/api/orders/{order_id}/balance")
+def order_balance(order_id: int):
+    _need_seed()
+    return _ok(cash_svc.order_balance, order_id)
+
+
+@app.post("/api/orders/{order_id}/pay")
+def pay_order(order_id: int, body: PayIn):
+    _need_seed()
+    return _ok(cash_svc.pay_order, order_id, body.method, body.amount_cents, body.tip_cents)

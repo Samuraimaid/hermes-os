@@ -9,6 +9,32 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.3.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    """
+    CREATE TABLE IF NOT EXISTS cash_shifts (
+        id BIGSERIAL PRIMARY KEY,
+        venue_id BIGINT NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'open',
+        opening_cash_cents INT NOT NULL DEFAULT 0,
+        counted_cash_cents INT,
+        opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        closed_at TIMESTAMPTZ
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS payments (
+        id BIGSERIAL PRIMARY KEY,
+        shift_id BIGINT NOT NULL REFERENCES cash_shifts(id) ON DELETE CASCADE,
+        order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        method TEXT NOT NULL,
+        amount_cents INT NOT NULL,
+        tip_cents INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.4.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 
