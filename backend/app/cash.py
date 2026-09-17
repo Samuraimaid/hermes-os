@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from app import db
 from app.orders import _load_order, _venue, close_order, deliver_order, order_out
-from app.settings import settings
-
 METHODS = ("cash", "card", "transfer", "other")
 
 
@@ -11,10 +9,14 @@ def _shift_out(shift: dict, payments: list[dict] | None = None) -> dict:
     pays = payments if payments is not None else _payments(shift["id"])
     by_method = {m: 0 for m in METHODS}
     tips = 0
+    cash_tips = 0
     for p in pays:
         by_method[p["method"]] = by_method.get(p["method"], 0) + p["amount_cents"]
-        tips += p.get("tip_cents") or 0
-    expected_cash = (shift.get("opening_cash_cents") or 0) + by_method["cash"]
+        tip = p.get("tip_cents") or 0
+        tips += tip
+        if p["method"] == "cash":
+            cash_tips += tip
+    expected_cash = (shift.get("opening_cash_cents") or 0) + by_method["cash"] + cash_tips
     counted = shift.get("counted_cash_cents")
     return {
         "id": shift["id"],
