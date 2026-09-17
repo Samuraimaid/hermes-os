@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.deployment import deployment_for
 from app.mechanisms import mechanism_for
 from app.profiles import PROFILES, resolve_modules
 from app.seed import ensure_demo_venue
@@ -26,6 +27,7 @@ def instance_payload(seed: dict | None = None) -> dict:
         "profile_label": PROFILES[profile]["label"],
         "modules": modules,
         "mechanism": mech,
+        "deployment": deployment_for(settings.hermes_deployment),
         "tagline": "El mensaje llega.",
         "database": bool(settings.database_url),
     }

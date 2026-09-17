@@ -8,7 +8,7 @@ El personal toma un pedido, la estación que corresponde lo ve, el cliente paga 
 
 1. **Plantilla, no marca de un local.** El nombre del cliente vive en configuración, no en el código.
 2. **Módulos opcionales.** Un buffet no arrastra mapa de mesas. Una convivencia no arrastra KDS salvo que lo pida.
-3. **Red local primero.** El servicio no puede depender de que internet del barrio esté estable.
+3. **Local, nube o híbrido.** El servicio puede vivir en el PC del local, en la nube (tablets por 4G, consulta remota) o en ambos. Ver `DESPLIEGUE.md`.
 4. **Caja distinta de factura fiscal.** Cobrar y emitir comprobante legal son capas distintas.
 5. **Una carta, muchos destinos.** El mismo producto puede ir a cocina, a barra o a mostrador.
 

@@ -61,6 +61,8 @@ HERMES_PROFILE=bar
 HERMES_MODULES=barra,cocina,caja,pantallas
 ```
 
+Despliegue (`HERMES_DEPLOYMENT`): `local`, `cloud` o `hybrid`. Tablets por 4G y consulta remota de facturación sin Wi‑Fi del local. Ver `docs/DESPLIEGUE.md`.
+
 Si `HERMES_MODULES` va vacío, Hermes usa los módulos por defecto de ese perfil.
 
 El perfil también cambia el **mecanismo**: unidad de trabajo (mesa, cuenta, turno, línea, caja), cómo viaja el pedido y cuándo se cobra. Ver `docs/MECANISMOS.md`.

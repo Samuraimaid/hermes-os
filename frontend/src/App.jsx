@@ -45,7 +45,14 @@ export default function App() {
               <span className="label">Cobro</span>
               <strong>{data.mechanism?.payment}</strong>
             </div>
+            <div className="row">
+              <span className="label">Despliegue</span>
+              <strong>{data.deployment?.label || "Local"}</strong>
+            </div>
             <p className="summary">{data.mechanism?.summary}</p>
+            {data.deployment?.summary && (
+              <p className="summary">{data.deployment.summary}</p>
+            )}
             <div className="pills">
               {(data.modules || []).map((m) => (
                 <span className="pill" key={m}>

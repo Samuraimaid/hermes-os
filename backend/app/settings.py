@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     venue_name: str = "Local demo"
     venue_slug: str = "demo"
+    hermes_deployment: str = "local"
 
 
 settings = Settings()
