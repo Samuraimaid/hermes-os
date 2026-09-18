@@ -20,7 +20,7 @@ Si abres este proyecto en VS Code u otro IDE, **lee este archivo y `docs/CONTEXT
 
 ## Estado al cerrar el hilo original
 
-Implementado y commiteado hasta `53367dd`:
+Implementado hasta mapa de mesas y mover/juntar ítems:
 
 - Perfiles + módulos + mecanismos
 - Esquema Postgres, seed de local demo
@@ -29,8 +29,9 @@ Implementado y commiteado hasta `53367dd`:
 - Roles y PIN
 - Modificadores
 - Kiosco de autoservicio
+- Mapa de mesas (restaurant/bar) + `move` / `merge`
 
-Siguiente paso acordado: **probar Docker de punta a punta** y, si no hay cliente concreto, **mapa de mesas / mover ítems**.
+Siguiente paso: recorrer Piso con el mesero. No inventario ni factura fiscal.
 
 ## Arranque
 

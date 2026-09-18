@@ -38,6 +38,27 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
 }
 .row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: 0; }
+.row.pick {
+  font: inherit; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  color: inherit;
+}
+.row.picked { background: #f0e6d2; }
+.zones { display: flex; flex-direction: column; gap: 14px; }
+.zone-label {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.tile {
+  aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; cursor: pointer; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 8px;
+}
+.tile.busy { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; }
+.tile.current { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tile .meta { font-size: 11px; opacity: 0.85; }
 .label { color: var(--muted); }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .pill {
@@ -58,6 +79,7 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
 .ticket.prep { border-color: #c4a35a; }
 .ticket header { display: flex; justify-content: space-between; gap: 8px; }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
+.actions .rowbtn, .actions .primary { width: auto; flex: 1; margin-top: 0; }
 .field {
   font: inherit; width: 100%; margin: 8px 0; padding: 8px 10px;
   border: 1px solid var(--line); border-radius: 8px; background: #fff;

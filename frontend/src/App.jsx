@@ -125,6 +125,8 @@ function FloorView() {
   const [current, setCurrent] = useState(null);
   const [pending, setPending] = useState(null);
   const [picked, setPicked] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [destId, setDestId] = useState("");
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -138,7 +140,10 @@ function FloorView() {
     setSpaces(sp);
     setProducts(pr);
     setOrders(ords);
-    setCurrent((prev) => ords.find((o) => o.id === prev?.id) || prev);
+    setCurrent((prev) => {
+      const still = ords.find((o) => o.id === prev?.id);
+      return still || prev;
+    });
   }, []);
 
   useEffect(() => {
@@ -148,11 +153,52 @@ function FloorView() {
   async function run(fn) {
     try {
       setError("");
-      await fn();
-      await refresh();
+      const next = await fn();
+      const [inst, sp, pr, ords] = await Promise.all([
+        api("/api/instance"),
+        api("/api/spaces"),
+        api("/api/products"),
+        api("/api/orders"),
+      ]);
+      setInstance(inst);
+      setSpaces(sp);
+      setProducts(pr);
+      setOrders(ords);
+      setCurrent((prev) => {
+        const id = next?.id ?? prev?.id;
+        return ords.find((o) => o.id === id) || next || prev;
+      });
     } catch (e) {
       setError(e.message);
     }
+  }
+
+  const mapSpaces = spaces.filter((s) => s.kind === "table" || s.kind === "tab");
+  const useMap = mapSpaces.length > 0;
+  const floorSpaces = useMap ? mapSpaces : spaces;
+  const orderBySpace = Object.fromEntries(
+    orders.filter((o) => o.space?.id).map((o) => [o.space.id, o])
+  );
+  const zones = [];
+  for (const s of floorSpaces) {
+    const zone = s.zone || "Piso";
+    const last = zones[zones.length - 1];
+    if (!last || last.name !== zone) zones.push({ name: zone, spaces: [s] });
+    else last.spaces.push(s);
+  }
+  const destSpaces = floorSpaces.filter((s) => s.id !== current?.space?.id);
+
+  function toggleItem(id) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function openSpace(spaceId) {
+    const order = await api("/api/orders", {
+      method: "POST",
+      body: JSON.stringify({ space_id: spaceId, cover_count: 2 }),
+    });
+    setSelected([]);
+    return order;
   }
 
   return (
@@ -165,27 +211,47 @@ function FloorView() {
       {error && <p className="err">{error}</p>}
       <div className="grid">
         <section className="card">
-          <h2>Unidades</h2>
-          <div className="list">
-            {spaces.map((s) => (
-              <button
-                key={s.id}
-                className="rowbtn"
-                onClick={() =>
-                  run(async () => {
-                    const order = await api("/api/orders", {
-                      method: "POST",
-                      body: JSON.stringify({ space_id: s.id, cover_count: 2 }),
-                    });
-                    setCurrent(order);
-                  })
-                }
-              >
-                <strong>{s.name}</strong>
-                <span>{s.kind}</span>
-              </button>
-            ))}
-          </div>
+          <h2>{useMap ? "Mapa" : "Unidades"}</h2>
+          {useMap ? (
+            <div className="zones">
+              {zones.map((z) => (
+                <div key={z.name}>
+                  <div className="zone-label">{z.name}</div>
+                  <div className="tiles">
+                    {z.spaces.map((s) => {
+                      const occ = orderBySpace[s.id];
+                      const on = current?.space?.id === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          className={`tile${occ ? " busy" : ""}${on ? " current" : ""}`}
+                          onClick={() => run(() => openSpace(s.id))}
+                        >
+                          <strong>{s.name}</strong>
+                          <span className="meta">
+                            {occ ? `${occ.precuenta.item_count} ítems` : "libre"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="list">
+              {floorSpaces.map((s) => (
+                <button
+                  key={s.id}
+                  className="rowbtn"
+                  onClick={() => run(() => openSpace(s.id))}
+                >
+                  <strong>{s.name}</strong>
+                  <span>{s.kind}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
         <section className="card">
           <h2>Carta</h2>
@@ -201,13 +267,12 @@ function FloorView() {
                     setPicked([]);
                     return;
                   }
-                  run(async () => {
-                    const order = await api(`/api/orders/${current.id}/items`, {
+                  run(async () =>
+                    api(`/api/orders/${current.id}/items`, {
                       method: "POST",
                       body: JSON.stringify({ product_id: p.id, qty: 1 }),
-                    });
-                    setCurrent(order);
-                  });
+                    })
+                  );
                 }}
               >
                 <strong>{p.name}</strong>
@@ -247,9 +312,9 @@ function FloorView() {
                         modifier_ids: picked,
                       }),
                     });
-                    setCurrent(order);
                     setPending(null);
                     setPicked([]);
+                    return order;
                   })
                 }
               >
@@ -269,7 +334,12 @@ function FloorView() {
               </p>
               <div className="list">
                 {current.items.map((i) => (
-                  <div className="row" key={i.id}>
+                  <button
+                    type="button"
+                    className={`row pick${selected.includes(i.id) ? " picked" : ""}`}
+                    key={i.id}
+                    onClick={() => toggleItem(i.id)}
+                  >
                     <span>
                       {i.qty}× {i.name}
                       {i.modifiers?.length
@@ -279,19 +349,85 @@ function FloorView() {
                     <span>
                       {i.station || "—"} · {i.status}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
               <p className="summary">
                 Precuenta: {(current.precuenta.subtotal_cents / 100).toFixed(2)} ·{" "}
                 {current.precuenta.item_count} ítems
               </p>
+              {useMap && destSpaces.length > 0 && (
+                <div className="ticket">
+                  <p className="muted">Mover o juntar a otra mesa o cuenta</p>
+                  <select
+                    className="field"
+                    value={destId}
+                    onChange={(e) => setDestId(e.target.value)}
+                  >
+                    <option value="">Elegir destino…</option>
+                    {destSpaces.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                        {orderBySpace[s.id] ? " · ocupada" : " · libre"}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="actions">
+                    <button
+                      className="rowbtn"
+                      disabled={!destId || selected.length === 0}
+                      onClick={() =>
+                        run(async () => {
+                          let dest = null;
+                          for (const id of selected) {
+                            const out = await api(`/api/items/${id}/move`, {
+                              method: "POST",
+                              body: JSON.stringify({ to_space_id: Number(destId) }),
+                            });
+                            dest = out.destination;
+                          }
+                          setSelected([]);
+                          return dest;
+                        })
+                      }
+                    >
+                      Mover
+                    </button>
+                    <button
+                      className="rowbtn"
+                      disabled={!destId || !current.items.length}
+                      onClick={() =>
+                        run(async () => {
+                          const spaceId = Number(destId);
+                          let onto = orderBySpace[spaceId];
+                          if (!onto) {
+                            onto = await api("/api/orders", {
+                              method: "POST",
+                              body: JSON.stringify({
+                                space_id: spaceId,
+                                cover_count: current.cover_count || 2,
+                              }),
+                            });
+                          }
+                          const out = await api(`/api/orders/${current.id}/merge`, {
+                            method: "POST",
+                            body: JSON.stringify({ onto_order_id: onto.id }),
+                          });
+                          setSelected([]);
+                          return out.destination;
+                        })
+                      }
+                    >
+                      Juntar
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 className="primary"
                 onClick={() =>
                   run(async () => {
-                    const order = await api(`/api/orders/${current.id}/send`, { method: "POST" });
-                    setCurrent(order);
+                    return api(`/api/orders/${current.id}/send`, { method: "POST" });
                   })
                 }
               >
@@ -302,8 +438,7 @@ function FloorView() {
                   className="rowbtn"
                   onClick={() =>
                     run(async () => {
-                      const order = await api(`/api/orders/${current.id}/deliver`, { method: "POST" });
-                      setCurrent(order);
+                      return api(`/api/orders/${current.id}/deliver`, { method: "POST" });
                     })
                   }
                 >
@@ -315,8 +450,7 @@ function FloorView() {
                   className="primary"
                   onClick={() =>
                     run(async () => {
-                      const order = await api(`/api/orders/${current.id}/close`, { method: "POST" });
-                      setCurrent(order);
+                      return api(`/api/orders/${current.id}/close`, { method: "POST" });
                     })
                   }
                 >

@@ -87,4 +87,4 @@ hermes-os/
 
 ## Estado
 
-Núcleo 0.3: orden + precuenta + envío + pantalla de estaciones (KDS).
+Núcleo 0.3: orden + precuenta + KDS + caja + mapa de mesas (mover/juntar).

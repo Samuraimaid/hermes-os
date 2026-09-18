@@ -6,6 +6,7 @@ from app.profiles import PROFILES, resolve_modules
 from app.settings import settings
 
 ACTIVE = ("open", "sent", "in_progress", "ready", "delivered")
+FLOOR_KINDS = {"table", "tab"}
 
 ORIGIN_BY_SPACE = {
     "table": "sala",
@@ -471,6 +472,124 @@ def kds_board() -> dict:
             for s in stations
         ],
     }
+
+
+def _has_payments(order_id: int) -> bool:
+    row = db.fetch_one(
+        "SELECT COUNT(*) AS n FROM payments WHERE order_id = %s",
+        (order_id,),
+    )
+    return bool(row and row["n"])
+
+
+def _close_if_empty(order_id: int) -> None:
+    live = db.fetch_all(
+        "SELECT id FROM order_items WHERE order_id = %s AND status <> 'void'",
+        (order_id,),
+    )
+    if live:
+        _refresh_order_status(order_id)
+        return
+    db.execute(
+        """
+        UPDATE orders
+        SET status = 'closed', closed_at = now()
+        WHERE id = %s AND status <> 'closed'
+        """,
+        (order_id,),
+    )
+
+
+def _pair_out(source_id: int, dest_id: int) -> dict:
+    source = _load_order(source_id)
+    dest = _load_order(dest_id)
+    return {
+        "source": order_out(source) if source else None,
+        "destination": order_out(dest) if dest else None,
+    }
+
+
+def _require_floor_space(space: dict | None) -> dict:
+    if not space:
+        raise ValueError("Espacio no encontrado")
+    if space["kind"] not in FLOOR_KINDS:
+        raise ValueError("Solo se mueve entre mesas o cuentas de barra")
+    return space
+
+
+def move_item(item_id: int, to_space_id: int) -> dict:
+    item = db.fetch_one("SELECT * FROM order_items WHERE id = %s", (item_id,))
+    if not item:
+        raise ValueError("Ítem no encontrado")
+    if item["status"] == "void":
+        raise ValueError("No se mueve un ítem anulado")
+
+    source = _load_order(item["order_id"])
+    if not source:
+        raise ValueError("Orden no encontrada")
+    if source["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La orden origen está cerrada")
+    _require_floor_space(source.get("space"))
+    if _has_payments(source["order"]["id"]):
+        raise ValueError("Hay pagos en la cuenta origen")
+
+    dest_space = db.fetch_one(
+        "SELECT * FROM spaces WHERE id = %s AND venue_id = %s",
+        (to_space_id, source["order"]["venue_id"]),
+    )
+    _require_floor_space(dest_space)
+
+    dest = open_order(to_space_id, source["order"].get("cover_count"), source["order"].get("dining_option"))
+    if dest["id"] == source["order"]["id"]:
+        raise ValueError("El destino es la misma cuenta")
+    if dest["status"] in {"closed", "void"}:
+        raise ValueError("La cuenta destino está cerrada")
+    if _has_payments(dest["id"]):
+        raise ValueError("Hay pagos en la cuenta destino")
+
+    db.execute(
+        "UPDATE order_items SET order_id = %s WHERE id = %s",
+        (dest["id"], item_id),
+    )
+    _close_if_empty(source["order"]["id"])
+    _refresh_order_status(dest["id"])
+    return _pair_out(source["order"]["id"], dest["id"])
+
+
+def merge_order(order_id: int, onto_order_id: int) -> dict:
+    if order_id == onto_order_id:
+        raise ValueError("No se junta una cuenta consigo misma")
+
+    source = _load_order(order_id)
+    dest = _load_order(onto_order_id)
+    if not source or not dest:
+        raise ValueError("Orden no encontrada")
+    if source["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La orden origen está cerrada")
+    if dest["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La cuenta destino está cerrada")
+    _require_floor_space(source.get("space"))
+    _require_floor_space(dest.get("space"))
+    if _has_payments(order_id):
+        raise ValueError("Hay pagos en la cuenta origen")
+    if _has_payments(onto_order_id):
+        raise ValueError("Hay pagos en la cuenta destino")
+
+    live = _live_items(source)
+    if not live:
+        raise ValueError("La cuenta origen no tiene ítems")
+
+    db.execute(
+        """
+        UPDATE order_items
+        SET order_id = %s
+        WHERE order_id = %s AND status <> 'void'
+        """,
+        (onto_order_id, order_id),
+    )
+    _close_if_empty(order_id)
+    _refresh_order_status(onto_order_id)
+    return _pair_out(order_id, onto_order_id)
 
 
 def modules_ok() -> list[str]:
