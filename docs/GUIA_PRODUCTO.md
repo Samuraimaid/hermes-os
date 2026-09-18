@@ -149,7 +149,7 @@ Iniciar sesión (PIN)
 5. Ruta CDS mínima — hecho (artículos, subtotal, total; sin propina)  
 6. Descuento + impuesto (ticket interno) — hecho (descuento por cuenta; IVA opcional 15% bps, apagado por defecto)  
 7. Back office: resumen de ventas + lista de artículos — resumen y recibos del día hechos; falta catálogo  
-8. Reembolso y lista de recibos  
+8. Reembolso y lista de recibos — hecho (reembolso de recibo; no edita el ticket)  
 9. Inventario SKU si el rubro lo pide  
 10. Hybrid / impresora / CDS propina
 

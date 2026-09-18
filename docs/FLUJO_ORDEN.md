@@ -23,8 +23,9 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 10. `POST /api/items/{id}/void` — anula el renglón. Falla si hay pagos. Si no quedan ítems vivos, cierra el ticket. Cap `floor`.
 11. `GET /api/cds` — ticket activo para la pantalla cliente (sin PIN). Sin órdenes abiertas, `ticket: null`.
 12. `POST /api/orders/{id}/discount` `{ type: percent | amount | null, value }` — un descuento por cuenta. `percent` es 0–100; `amount` va en centavos. Falla si hay pagos. Cap `floor`.
-13. `GET /api/sales/today` — resumen del día y lista de recibos (órdenes `closed`). Cap `admin`. Solo lectura.
+13. `GET /api/sales/today` — resumen del día y lista de recibos (órdenes `closed`). Cap `cash` (dueño también).
 14. `POST /api/venue/tax` `{ enabled, bps }` — impuesto opcional de la tienda. `bps` 1500 = 15%. Cap `admin`. No toca cuentas con pagos.
+15. `POST /api/orders/{id}/refund` — reembolsa cobro + propina al método original (o `refund` si hubo varios). El recibo queda `refunded`; no se edita el ticket. Cap `cash`. Requiere turno abierto.
 
 Por defecto `tax_enabled` es false: no se muestra IVA y el total es subtotal − descuento. Si el dueño lo enciende, se añade sobre (subtotal − descuento). No es factura fiscal.
 

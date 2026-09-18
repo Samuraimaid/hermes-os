@@ -81,6 +81,22 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.9.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMPTZ",
+    """
+    CREATE TABLE IF NOT EXISTS refunds (
+        id BIGSERIAL PRIMARY KEY,
+        shift_id BIGINT NOT NULL REFERENCES cash_shifts(id) ON DELETE CASCADE,
+        order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        method TEXT NOT NULL,
+        amount_cents INT NOT NULL,
+        tip_cents INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.10.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

@@ -63,6 +63,7 @@ Orden de commits (rama `main`):
 20. Back office mínimo: `/ventas` + `GET /api/sales/today`
 21. Impuesto de tienda opcional (apagado por defecto, 1500 bps = 15%)
 22. Moneda NIO/C$ y TPV compacto (franja de mesas)
+23. Reembolso de recibo (no toca el ticket)
 
 ### API útil
 
@@ -74,7 +75,8 @@ Orden de commits (rama `main`):
 - `POST /api/items/{id}/void`
 - `POST /api/orders/{id}/discount` `{ type, value }`
 - `GET /api/cds` (sin PIN; ticket activo)
-- `GET /api/sales/today` (cap `admin`) · `POST /api/venue/tax` `{ enabled, bps }`
+- `GET /api/sales/today` (cap `cash`) · `POST /api/venue/tax` `{ enabled, bps }`
+- `POST /api/orders/{id}/refund` (cap `cash`)
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
 

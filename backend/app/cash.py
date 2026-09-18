@@ -16,7 +16,17 @@ def _shift_out(shift: dict, payments: list[dict] | None = None) -> dict:
         tips += tip
         if p["method"] == "cash":
             cash_tips += tip
-    expected_cash = (shift.get("opening_cash_cents") or 0) + by_method["cash"] + cash_tips
+    refunds = db.fetch_all(
+        "SELECT method, amount_cents, tip_cents FROM refunds WHERE shift_id = %s",
+        (shift["id"],),
+    ) if shift.get("id") else []
+    refund_total = 0
+    cash_refunds = 0
+    for r in refunds:
+        refund_total += (r["amount_cents"] or 0) + (r.get("tip_cents") or 0)
+        if r["method"] == "cash":
+            cash_refunds += (r["amount_cents"] or 0) + (r.get("tip_cents") or 0)
+    expected_cash = (shift.get("opening_cash_cents") or 0) + by_method["cash"] + cash_tips - cash_refunds
     counted = shift.get("counted_cash_cents")
     return {
         "id": shift["id"],
@@ -28,6 +38,7 @@ def _shift_out(shift: dict, payments: list[dict] | None = None) -> dict:
         "totals": {
             "by_method": by_method,
             "tips_cents": tips,
+            "refund_cents": refund_total,
             "sales_cents": sum(by_method.values()),
             "expected_cash_cents": expected_cash,
             "difference_cents": None if counted is None else counted - expected_cash,
@@ -67,7 +78,7 @@ def day_report() -> dict:
         (venue["id"], tz, tz),
     )
     receipts = []
-    gross = discount = tax = tips = collected = 0
+    gross = discount = tax = tips = collected = refunded_sum = 0
     for row in rows:
         bundle = _load_order(row["id"])
         if not bundle:
@@ -88,12 +99,21 @@ def day_report() -> dict:
             rec_tips += p.get("tip_cents") or 0
             if p["method"] not in methods:
                 methods.append(p["method"])
+        ref = db.fetch_one(
+            """
+            SELECT COALESCE(SUM(amount_cents + tip_cents), 0) AS n
+            FROM refunds WHERE order_id = %s
+            """,
+            (row["id"],),
+        )
+        rec_refund = int(ref["n"]) if ref else 0
         pc = body["precuenta"]
         gross += pc.get("subtotal_cents") or 0
         discount += pc.get("discount_cents") or 0
         tax += pc.get("tax_cents") or 0
         tips += rec_tips
         collected += rec_paid
+        refunded_sum += rec_refund
         space = body.get("space")
         receipts.append(
             {
@@ -108,6 +128,8 @@ def day_report() -> dict:
                 "total_cents": pc.get("total_cents") or 0,
                 "collected_cents": rec_paid,
                 "tips_cents": rec_tips,
+                "refund_cents": rec_refund,
+                "refunded": bool(bundle["order"].get("refunded_at")) or rec_refund > 0,
                 "methods": methods,
             }
         )
@@ -121,6 +143,7 @@ def day_report() -> dict:
         "tax_cents": tax,
         "tips_cents": tips,
         "collected_cents": collected,
+        "refund_cents": refunded_sum,
         "receipt_count": len(receipts),
         "receipts": receipts,
     }
@@ -251,3 +274,61 @@ def pay_order(order_id: int, method: str, amount_cents: int, tip_cents: int = 0)
         bal = order_balance(order_id)
     bal["shift"] = current_shift()
     return bal
+
+
+def refund_order(order_id: int) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    order = bundle["order"]
+    if order["status"] != "closed":
+        raise ValueError("Solo se reembolsa un recibo cerrado")
+    if order.get("refunded_at"):
+        raise ValueError("El recibo ya fue reembolsado")
+
+    pays = db.fetch_all(
+        "SELECT method, amount_cents, tip_cents FROM payments WHERE order_id = %s ORDER BY id",
+        (order_id,),
+    )
+    if not pays:
+        raise ValueError("No hay cobro que devolver")
+
+    shift = db.fetch_one(
+        """
+        SELECT * FROM cash_shifts
+        WHERE venue_id = %s AND status = 'open'
+        ORDER BY id DESC LIMIT 1
+        """,
+        (_venue()["id"],),
+    )
+    if not shift:
+        raise ValueError("Abre un turno de caja antes de reembolsar")
+
+    methods = []
+    amount = 0
+    tips = 0
+    for p in pays:
+        amount += p["amount_cents"] or 0
+        tips += p.get("tip_cents") or 0
+        if p["method"] not in methods:
+            methods.append(p["method"])
+    method = methods[0] if len(methods) == 1 else "refund"
+
+    db.fetch_one(
+        """
+        INSERT INTO refunds (shift_id, order_id, method, amount_cents, tip_cents)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+        """,
+        (shift["id"], order_id, method, amount, tips),
+    )
+    db.execute("UPDATE orders SET refunded_at = now() WHERE id = %s", (order_id,))
+    return {
+        "ok": True,
+        "order_id": order_id,
+        "method": method,
+        "amount_cents": amount,
+        "tip_cents": tips,
+        "refund_cents": amount + tips,
+        "report": day_report(),
+    }

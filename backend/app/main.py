@@ -343,3 +343,9 @@ def order_balance(order_id: int):
 def pay_order(order_id: int, body: PayIn):
     _need_seed()
     return _ok(cash_svc.pay_order, order_id, body.method, body.amount_cents, body.tip_cents)
+
+
+@app.post("/api/orders/{order_id}/refund")
+def refund_order(order_id: int):
+    _need_seed()
+    return _ok(cash_svc.refund_order, order_id)

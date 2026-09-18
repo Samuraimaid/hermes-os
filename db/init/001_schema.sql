@@ -85,7 +85,8 @@ CREATE TABLE IF NOT EXISTS orders (
     tax_enabled     BOOLEAN,
     tax_bps         INT,
     opened_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    closed_at       TIMESTAMPTZ
+    closed_at       TIMESTAMPTZ,
+    refunded_at     TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -128,6 +129,16 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS idx_orders_venue_status ON orders (venue_id, status);
 CREATE INDEX IF NOT EXISTS idx_payments_order ON payments (order_id);
+
+CREATE TABLE IF NOT EXISTS refunds (
+    id              BIGSERIAL PRIMARY KEY,
+    shift_id        BIGINT NOT NULL REFERENCES cash_shifts(id) ON DELETE CASCADE,
+    order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    method          TEXT NOT NULL,
+    amount_cents    INT NOT NULL,
+    tip_cents       INT NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS staff (
     id          BIGSERIAL PRIMARY KEY,

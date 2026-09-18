@@ -128,6 +128,8 @@ def order_out(bundle: dict) -> dict:
         },
         "paid_cents": paid,
         "due_cents": max(0, total - paid),
+        "refunded": bool(order.get("refunded_at")),
+        "refunded_at": order["refunded_at"].isoformat() if order.get("refunded_at") else None,
     }
 
 

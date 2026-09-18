@@ -202,7 +202,7 @@ export default function App() {
               Kiosco
             </button>
           )}
-          {canAdmin && (
+          {(canAdmin || canCash) && !waiterOnly && (
             <button className={view === "ventas" ? "tab on" : "tab"} onClick={() => setView("ventas")}>
               Resumen de ventas
             </button>
@@ -221,7 +221,9 @@ export default function App() {
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
       {view === "kiosko" && canKiosk && <KioskView />}
-      {view === "ventas" && canAdmin && <SalesView />}
+      {view === "ventas" && (canAdmin || canCash) && (
+        <SalesView canRefund={canCash} canAdmin={canAdmin} />
+      )}
     </main>
   );
 }
@@ -347,8 +349,8 @@ function SalesScreen() {
       });
       localStorage.setItem("hermes_token", session.token);
       localStorage.setItem("hermes_user", JSON.stringify(session));
-      if (!hasCap(session, "admin")) {
-        setError("Solo el dueño ve el resumen de ventas.");
+      if (!hasCap(session, "cash") && !hasCap(session, "admin")) {
+        setError("Solo caja o dueño ven el resumen de ventas.");
         return;
       }
       setUser(session);
@@ -366,12 +368,12 @@ function SalesScreen() {
     setPin("");
   }
 
-  if (!user || !hasCap(user, "admin")) {
+  if (!user || (!hasCap(user, "cash") && !hasCap(user, "admin"))) {
     return (
       <main className="shell">
         <div className="kicker">{storeName} · Resumen de ventas</div>
         <h1>Iniciar sesión</h1>
-        <p className="tag">PIN del dueño: 0000</p>
+        <p className="tag">PIN de caja o dueño</p>
         {error && <p className="err">{error}</p>}
         <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
         <button className="primary" onClick={enter}>
@@ -392,12 +394,12 @@ function SalesScreen() {
           Salir
         </button>
       </div>
-      <SalesView />
+      <SalesView canRefund={hasCap(user, "cash")} canAdmin={hasCap(user, "admin")} />
     </main>
   );
 }
 
-function SalesView() {
+function SalesView({ canRefund = false, canAdmin = false }) {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
 
@@ -412,7 +414,7 @@ function SalesView() {
 
   return (
     <>
-      <p className="tag">Día {report.date}. Solo lectura. El recibo no es factura fiscal.</p>
+      <p className="tag">Día {report.date}. El recibo no es factura fiscal.</p>
       <section className="card">
         <h2>Resumen de ventas</h2>
         <div className="row">
@@ -438,9 +440,14 @@ function SalesView() {
           <strong>{money(report.collected_cents)}</strong>
         </div>
         <div className="row">
+          <span className="label">Reembolsos</span>
+          <strong>{money(report.refund_cents)}</strong>
+        </div>
+        <div className="row">
           <span className="label">Recibos</span>
           <strong>{report.receipt_count}</strong>
         </div>
+        {canAdmin && (
         <label className="muted" style={{ display: "block", marginTop: 12 }}>
           <input
             type="checkbox"
@@ -458,6 +465,7 @@ function SalesView() {
           />{" "}
           Sumar impuesto ({((report.tax_bps || 1500) / 100).toFixed(0)}%). No es factura fiscal.
         </label>
+        )}
       </section>
       <section className="card" style={{ marginTop: 18 }}>
         <h2>Recibos del día</h2>
@@ -469,8 +477,25 @@ function SalesView() {
               {r.methods?.length
                 ? ` · ${r.methods.map((m) => PAY_LABEL[m] || m).join(" + ")}`
                 : " · sin cobro"}
+              {r.refunded ? " · reembolsado" : ""}
             </span>
-            <strong>{money(r.total_cents)}</strong>
+            <span>
+              <strong>{money(r.total_cents)}</strong>
+              {canRefund && r.collected_cents > 0 && !r.refunded && (
+                <button
+                  type="button"
+                  className="void-btn"
+                  style={{ marginLeft: 8 }}
+                  onClick={() => {
+                    api(`/api/orders/${r.id}/refund`, { method: "POST" })
+                      .then((out) => setReport(out.report || out))
+                      .catch((err) => setError(err.message));
+                  }}
+                >
+                  Reembolsar
+                </button>
+              )}
+            </span>
           </div>
         ))}
       </section>
