@@ -114,6 +114,8 @@ def day_report() -> dict:
     day = db.fetch_one("SELECT (now() AT TIME ZONE %s)::date AS d", (tz,))
     return {
         "date": str(day["d"]) if day else None,
+        "tax_enabled": bool(venue.get("tax_enabled")),
+        "tax_bps": int(venue.get("tax_bps") or 0),
         "gross_cents": gross,
         "discount_cents": discount,
         "tax_cents": tax,

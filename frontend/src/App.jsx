@@ -273,9 +273,9 @@ function CdsView() {
                 <strong>−{money(discount)}</strong>
               </div>
             )}
-            {tax > 0 && (
+            {ticket.tax_enabled && (
               <div className="row">
-                <span className="label">Impuesto {ticket.tax_percent ? `${ticket.tax_percent}%` : ""}</span>
+                <span className="label">Impuesto {ticket.tax_bps ? `${ticket.tax_bps / 100}%` : ""}</span>
                 <strong>{money(tax)}</strong>
               </div>
             )}
@@ -398,10 +398,12 @@ function SalesView() {
           <span className="label">Descuentos</span>
           <strong>{money(report.discount_cents)}</strong>
         </div>
-        <div className="row">
-          <span className="label">Impuestos</span>
-          <strong>{money(report.tax_cents)}</strong>
-        </div>
+        {(report.tax_enabled || report.tax_cents > 0) && (
+          <div className="row">
+            <span className="label">Impuestos</span>
+            <strong>{money(report.tax_cents)}</strong>
+          </div>
+        )}
         <div className="row">
           <span className="label">Propinas</span>
           <strong>{money(report.tips_cents)}</strong>
@@ -414,6 +416,23 @@ function SalesView() {
           <span className="label">Recibos</span>
           <strong>{report.receipt_count}</strong>
         </div>
+        <label className="muted" style={{ display: "block", marginTop: 12 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(report.tax_enabled)}
+            onChange={(e) => {
+              const enabled = e.target.checked;
+              api("/api/venue/tax", {
+                method: "POST",
+                body: JSON.stringify({ enabled, bps: report.tax_bps || 1500 }),
+              })
+                .then(() => api("/api/sales/today"))
+                .then(setReport)
+                .catch((err) => setError(err.message));
+            }}
+          />{" "}
+          Sumar impuesto ({((report.tax_bps || 1500) / 100).toFixed(0)}%). No es factura fiscal.
+        </label>
       </section>
       <section className="card" style={{ marginTop: 18 }}>
         <h2>Recibos del día</h2>
@@ -648,14 +667,16 @@ function FloorView({ canCash }) {
                 {(current.precuenta.discount_cents || 0) > 0
                   ? ` · descuento −${money(current.precuenta.discount_cents)}`
                   : ""}
-                {(current.precuenta.tax_cents || 0) > 0
-                  ? ` · impuesto ${current.tax_percent || 0}% ${money(current.precuenta.tax_cents)}`
+                {current.tax_enabled
+                  ? ` · impuesto ${(current.tax_bps || 0) / 100}% ${money(current.precuenta.tax_cents || 0)}`
                   : ""}
                 {" · "}
                 total {money(current.precuenta.total_cents ?? current.precuenta.subtotal_cents)} ·{" "}
                 {current.precuenta.item_count} artículos
               </p>
-              <p className="muted">El impuesto es interno, no factura fiscal.</p>
+              {current.tax_enabled && (
+                <p className="muted">El impuesto es interno, no factura fiscal.</p>
+              )}
               <div className="ticket">
                 <p className="muted">Descuento de la cuenta</p>
                 <div className="actions">

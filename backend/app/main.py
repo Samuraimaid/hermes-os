@@ -66,7 +66,8 @@ class DiscountIn(BaseModel):
 
 
 class TaxIn(BaseModel):
-    percent: int = 0
+    enabled: bool = False
+    bps: int = 1500
 
 
 def current_profile() -> str:
@@ -94,7 +95,8 @@ def instance_payload(seed: dict | None = None) -> dict:
             "id": seed["venue"]["id"],
             "name": seed["venue"]["name"],
             "slug": seed["venue"]["slug"],
-            "tax_percent": int(seed["venue"].get("tax_percent") or 0),
+            "tax_enabled": bool(seed["venue"].get("tax_enabled")),
+            "tax_bps": int(seed["venue"].get("tax_bps") or 0),
         }
         payload["counts"] = {
             "spaces": len(seed.get("spaces") or []),
@@ -277,7 +279,7 @@ def set_discount(order_id: int, body: DiscountIn):
 @app.post("/api/venue/tax")
 def set_venue_tax(body: TaxIn):
     _need_seed()
-    return _ok(order_svc.set_venue_tax, body.percent)
+    return _ok(order_svc.set_venue_tax, body.enabled, body.bps)
 
 
 @app.get("/api/stations/{station_key}/tickets")

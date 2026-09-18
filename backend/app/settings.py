@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     venue_name: str = "Local demo"
     venue_slug: str = "demo"
     hermes_deployment: str = "local"
-    hermes_tax_percent: int = 16
+    hermes_tax_enabled: bool = False
+    hermes_tax_bps: int = 1500
 
 
 settings = Settings()

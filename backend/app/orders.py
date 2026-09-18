@@ -83,9 +83,9 @@ def order_out(bundle: dict) -> dict:
         kind = None
         raw = 0
     net = max(0, subtotal - discount)
-    pct = order.get("tax_percent")
-    pct = 0 if pct is None else max(0, min(100, int(pct)))
-    tax = net * pct // 100 if pct else 0
+    tax_on = bool(order.get("tax_enabled"))
+    bps = max(0, min(10000, int(order.get("tax_bps") or 0)))
+    tax = net * bps // 10000 if tax_on and bps else 0
     total = net + tax
     return {
         "id": order["id"],
@@ -117,7 +117,8 @@ def order_out(bundle: dict) -> dict:
             for i in items
         ],
         "discount": {"type": kind, "value": raw} if kind else None,
-        "tax_percent": pct,
+        "tax_enabled": tax_on,
+        "tax_bps": bps if tax_on else 0,
         "precuenta": {
             "item_count": sum(i["qty"] for i in items if i["status"] != "void"),
             "subtotal_cents": subtotal,
@@ -194,10 +195,14 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
         if existing:
             bundle = _load_order(existing["id"])
             assert bundle
-            if bundle["order"].get("tax_percent") is None and not _has_payments(existing["id"]):
+            if bundle["order"].get("tax_enabled") is None and not _has_payments(existing["id"]):
                 db.execute(
-                    "UPDATE orders SET tax_percent = %s WHERE id = %s",
-                    (int(venue.get("tax_percent") or 0), existing["id"]),
+                    "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+                    (
+                        bool(venue.get("tax_enabled")),
+                        int(venue.get("tax_bps") or 0),
+                        existing["id"],
+                    ),
                 )
                 bundle = _load_order(existing["id"])
                 assert bundle
@@ -221,12 +226,22 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
     created = db.fetch_one(
         """
         INSERT INTO orders (
-            venue_id, space_id, origin, status, cover_count, queue_number, dining_option, tax_percent
+            venue_id, space_id, origin, status, cover_count, queue_number, dining_option,
+            tax_enabled, tax_bps
         )
-        VALUES (%s, %s, %s, 'open', %s, %s, %s, %s)
+        VALUES (%s, %s, %s, 'open', %s, %s, %s, %s, %s)
         RETURNING *
         """,
-        (venue["id"], space_id, origin, covers, queue_no, option, int(venue.get("tax_percent") or 0)),
+        (
+            venue["id"],
+            space_id,
+            origin,
+            covers,
+            queue_no,
+            option,
+            bool(venue.get("tax_enabled")),
+            int(venue.get("tax_bps") or 0),
+        ),
     )
     return order_out({"order": created, "items": [], "space": space})
 
@@ -704,10 +719,14 @@ def set_discount(order_id: int, discount_type: str | None, value: int = 0) -> di
     return order_out(loaded)
 
 
-def set_venue_tax(percent: int) -> dict:
-    pct = max(0, min(100, int(percent)))
+def set_venue_tax(enabled: bool, bps: int = 1500) -> dict:
+    on = bool(enabled)
+    rate = max(0, min(10000, int(bps)))
     venue = _venue()
-    db.execute("UPDATE venues SET tax_percent = %s WHERE id = %s", (pct, venue["id"]))
+    db.execute(
+        "UPDATE venues SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+        (on, rate, venue["id"]),
+    )
     open_rows = db.fetch_all(
         "SELECT id FROM orders WHERE venue_id = %s AND status = ANY(%s)",
         (venue["id"], list(ACTIVE)),
@@ -715,8 +734,11 @@ def set_venue_tax(percent: int) -> dict:
     for row in open_rows:
         if _has_payments(row["id"]):
             continue
-        db.execute("UPDATE orders SET tax_percent = %s WHERE id = %s", (pct, row["id"]))
-    return {"tax_percent": pct}
+        db.execute(
+            "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+            (on, rate, row["id"]),
+        )
+    return {"tax_enabled": on, "tax_bps": rate}
 
 
 def modules_ok() -> list[str]:

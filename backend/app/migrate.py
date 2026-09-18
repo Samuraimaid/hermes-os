@@ -73,6 +73,14 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.8.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE venues ADD COLUMN IF NOT EXISTS tax_enabled BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE venues ADD COLUMN IF NOT EXISTS tax_bps INT NOT NULL DEFAULT 1500",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_enabled BOOLEAN",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS tax_bps INT",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.9.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

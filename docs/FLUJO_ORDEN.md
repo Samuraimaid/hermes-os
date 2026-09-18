@@ -24,9 +24,9 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 11. `GET /api/cds` — ticket activo para la pantalla cliente (sin PIN). Sin órdenes abiertas, `ticket: null`.
 12. `POST /api/orders/{id}/discount` `{ type: percent | amount | null, value }` — un descuento por cuenta. `percent` es 0–100; `amount` va en centavos. Falla si hay pagos. Cap `floor`.
 13. `GET /api/sales/today` — resumen del día y lista de recibos (órdenes `closed`). Cap `admin`. Solo lectura.
-14. `POST /api/venue/tax` `{ percent }` — % de la tienda (0–100). Cap `admin`. No toca cuentas con pagos.
+14. `POST /api/venue/tax` `{ enabled, bps }` — impuesto opcional de la tienda. `bps` 1500 = 15%. Cap `admin`. No toca cuentas con pagos.
 
-La precuenta trae `subtotal_cents`, `discount_cents`, `tax_cents` y `total_cents`. El impuesto de la tienda (`venues.tax_percent`, demo 16) se **añade** sobre (subtotal − descuento), no va incluido. `due_cents` usa ese total. CDS y el resumen de ventas muestran lo mismo. Si hay pagos, no se cambia el % del ticket.
+Por defecto `tax_enabled` es false: no se muestra IVA y el total es subtotal − descuento. Si el dueño lo enciende, se añade sobre (subtotal − descuento). No es factura fiscal.
 
 Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status de ambas; si el origen queda vacío, se cierra (libera la mesa). Solo entre espacios `table` o `tab`. Cap `floor`.
 

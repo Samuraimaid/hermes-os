@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS venues (
     profile         TEXT NOT NULL,
     modules         TEXT[] NOT NULL DEFAULT '{}',
     timezone        TEXT NOT NULL DEFAULT 'America/Managua',
-    tax_percent     INT NOT NULL DEFAULT 16,
+    tax_enabled     BOOLEAN NOT NULL DEFAULT FALSE,
+    tax_bps         INT NOT NULL DEFAULT 1500,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -81,7 +82,8 @@ CREATE TABLE IF NOT EXISTS orders (
     notes           TEXT,
     discount_type   TEXT,
     discount_value  INT NOT NULL DEFAULT 0,
-    tax_percent     INT,
+    tax_enabled     BOOLEAN,
+    tax_bps         INT,
     opened_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at       TIMESTAMPTZ
 );
