@@ -29,6 +29,72 @@ function money(cents) {
   return `${moneySymbol} ${amountText(cents)}`;
 }
 
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
+
+function receiptHtml(rec) {
+  const sym = rec.store?.symbol || moneySymbol;
+  const fmt = (c) => `${sym} ${amountText(c)}`;
+  const t = rec.ticket || {};
+  const pc = t.precuenta || {};
+  const lines = (t.items || [])
+    .filter((i) => i.status !== "void")
+    .map(
+      (i) =>
+        `<tr><td>${esc(i.qty)}× ${esc(i.name)}${
+          i.modifiers?.length ? ` (${esc(i.modifiers.map((m) => m.name).join(", "))})` : ""
+        }</td><td style="text-align:right">${fmt(i.price_cents * i.qty)}</td></tr>`
+    )
+    .join("");
+  const taxRow =
+    t.tax_enabled && pc.tax_cents
+      ? `<tr><td>Impuesto ${t.tax_bps ? t.tax_bps / 100 : ""}%</td><td style="text-align:right">${fmt(pc.tax_cents)}</td></tr>`
+      : "";
+  const discRow =
+    pc.discount_cents > 0
+      ? `<tr><td>Descuento</td><td style="text-align:right">−${fmt(pc.discount_cents)}</td></tr>`
+      : "";
+  const tip = rec.tip_cents || 0;
+  const tipRow = tip
+    ? `<tr><td>Propina</td><td style="text-align:right">${fmt(tip)}</td></tr>`
+    : "";
+  const grand = (pc.total_cents || 0) + tip;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"/><title>Recibo #${t.id}</title>
+<style>
+  body{font-family:Roboto,sans-serif;padding:24px;max-width:360px;margin:0 auto;color:#111}
+  h1{font-size:16px;margin:0 0 4px} .muted{color:#666;font-size:12px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-weight:500}
+  td{padding:4px 0;font-size:13px}
+  .total td{font-size:15px;border-top:1px solid #ccc;padding-top:8px}
+  .foot{margin-top:16px;font-size:11px;color:#666}
+</style></head><body>
+<h1>${esc(rec.store?.name || "Hermes OS")}</h1>
+<p class="muted">Ticket #${t.id}${t.space?.name ? ` · ${esc(t.space.name)}` : ""}${
+    t.guest_name ? ` · ${esc(t.guest_name)}` : ""
+  }${t.dining_label ? ` · ${esc(t.dining_label)}` : ""}</p>
+<table>${lines}
+<tr><td>Subtotal</td><td style="text-align:right">${fmt(pc.subtotal_cents || 0)}</td></tr>
+${discRow}${taxRow}${tipRow}
+<tr class="total"><td>Total</td><td style="text-align:right">${fmt(grand)}</td></tr>
+</table>
+<p class="foot">Recibo interno. No es factura fiscal.</p>
+</body></html>`;
+}
+
+async function printReceipt(orderId) {
+  const rec = await api(`/api/orders/${orderId}/receipt`);
+  const w = window.open("", "hermes-recibo");
+  if (!w) throw new Error("Permite ventanas emergentes para imprimir");
+  w.document.write(receiptHtml(rec));
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
 async function api(path, opts = {}) {
   const token = localStorage.getItem("hermes_token");
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
@@ -942,6 +1008,16 @@ function SalesView({ canRefund = false, canAdmin = false }) {
             </span>
             <span>
               <strong className="amt">{money(r.total_cents)}</strong>
+              {(canRefund || canAdmin) && r.collected_cents > 0 && (
+                <button
+                  type="button"
+                  className="void-btn"
+                  style={{ marginLeft: 8 }}
+                  onClick={() => printReceipt(r.id).catch((err) => setError(err.message))}
+                >
+                  Imprimir recibo
+                </button>
+              )}
               {canRefund && r.collected_cents > 0 && !r.refunded && (
                 <button
                   type="button"
@@ -1402,6 +1478,14 @@ function FloorView({ canCash }) {
                   }
                 >
                   Entregar
+                </button>
+              )}
+              {canCash && current.paid_cents > 0 && (
+                <button
+                  className="rowbtn"
+                  onClick={() => printReceipt(current.id).catch((e) => setError(e.message))}
+                >
+                  Imprimir recibo
                 </button>
               )}
             </>

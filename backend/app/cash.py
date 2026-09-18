@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app import db
-from app.orders import _load_order, _venue, close_order, deliver_order, order_out
+from app.orders import _load_order, _venue, close_order, deliver_order, order_out, venue_public
 METHODS = ("cash", "card", "transfer", "other")
 
 
@@ -204,6 +204,39 @@ def close_shift(counted_cash_cents: int) -> dict:
     )
     row = db.fetch_one("SELECT * FROM cash_shifts WHERE id = %s", (shift["id"],))
     return _shift_out(row)
+
+
+def receipt_data(order_id: int) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    body = order_out(bundle)
+    if not body.get("paid_cents"):
+        raise ValueError("Aún no hay cobro")
+    pays = db.fetch_all(
+        """
+        SELECT method, amount_cents, tip_cents, created_at
+        FROM payments WHERE order_id = %s ORDER BY id
+        """,
+        (order_id,),
+    )
+    tip = sum(p.get("tip_cents") or 0 for p in pays)
+    collected = sum(p["amount_cents"] or 0 for p in pays)
+    store = venue_public(_venue())
+    return {
+        "ticket": body,
+        "store": {"name": store["name"], "currency": store["currency"], "symbol": store["symbol"]},
+        "payments": [
+            {
+                "method": p["method"],
+                "amount_cents": p["amount_cents"],
+                "tip_cents": p.get("tip_cents") or 0,
+            }
+            for p in pays
+        ],
+        "tip_cents": tip,
+        "collected_cents": collected,
+    }
 
 
 def order_balance(order_id: int) -> dict:

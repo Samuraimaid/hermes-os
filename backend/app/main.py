@@ -422,6 +422,12 @@ def order_balance(order_id: int):
     return _ok(cash_svc.order_balance, order_id)
 
 
+@app.get("/api/orders/{order_id}/receipt")
+def order_receipt(order_id: int):
+    _need_seed()
+    return _ok(cash_svc.receipt_data, order_id)
+
+
 @app.post("/api/orders/{order_id}/pay")
 def pay_order(order_id: int, body: PayIn):
     _need_seed()

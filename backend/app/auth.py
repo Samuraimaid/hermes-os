@@ -113,7 +113,13 @@ def cap_for_path(method: str, path: str) -> str | None:
     if not path.startswith("/api/"):
         return None
     path = path.rstrip("/") or "/"
-    if path.startswith("/api/shift") or path.endswith("/pay") or path.endswith("/refund") or "/balance" in path:
+    if (
+        path.startswith("/api/shift")
+        or path.endswith("/pay")
+        or path.endswith("/refund")
+        or path.endswith("/receipt")
+        or "/balance" in path
+    ):
         return "cash"
     if path.startswith("/api/kds") or path.startswith("/api/stations"):
         return "kds"
