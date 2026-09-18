@@ -28,13 +28,44 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function routePath() {
+  return window.location.pathname.replace(/\/+$/, "") || "/";
+}
+
 function isCdsPath() {
-  return window.location.pathname.replace(/\/+$/, "") === "/cds";
+  return routePath() === "/cds";
+}
+
+function isKdsPath() {
+  return routePath() === "/kds";
+}
+
+function hasCap(session, cap) {
+  const caps = session?.caps || [];
+  return caps.includes(cap) || caps.includes("admin");
+}
+
+function ticketTone(t) {
+  if (t.status === "void") return "void";
+  if (!t.sent_at) return t.status;
+  const min = (Date.now() - new Date(t.sent_at).getTime()) / 60000;
+  if (min >= 10) return `${t.status} late`;
+  if (min >= 5) return `${t.status} warn`;
+  return t.status;
+}
+
+function waitLabel(sentAt) {
+  if (!sentAt) return "";
+  const min = Math.max(0, Math.floor((Date.now() - new Date(sentAt).getTime()) / 60000));
+  return `${min} min`;
 }
 
 export default function App() {
   if (isCdsPath()) {
     return <CdsView />;
+  }
+  if (isKdsPath()) {
+    return <KdsScreen />;
   }
   const [user, setUser] = useState(() => {
     try {
@@ -75,14 +106,16 @@ export default function App() {
       localStorage.setItem("hermes_token", session.token);
       localStorage.setItem("hermes_user", JSON.stringify(session));
       setUser(session);
+      if (session.caps.includes("kds") && !session.caps.includes("floor") && !session.caps.includes("admin")) {
+        window.location.assign("/kds");
+        return;
+      }
       setView(
         session.caps.includes("kiosk") && !session.caps.includes("admin")
           ? "kiosko"
-          : session.caps.includes("kds") && !session.caps.includes("floor")
-            ? "kds"
-            : session.caps.includes("cash") && !session.caps.includes("floor")
-              ? "caja"
-              : "piso"
+          : session.caps.includes("cash") && !session.caps.includes("floor")
+            ? "caja"
+            : "piso"
       );
     } catch (e) {
       setError(e.message);
@@ -634,19 +667,112 @@ function FloorView({ canCash }) {
   );
 }
 
-function KdsView() {
+function KdsScreen() {
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hermes_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [storeName, setStoreName] = useState("Hermes OS");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyTheme(inst.profile);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
+      })
+      .catch(() => applyTheme("restaurant"));
+  }, []);
+
+  const canKds = hasCap(user, "kds");
+
+  async function enter() {
+    try {
+      setError("");
+      const session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      localStorage.setItem("hermes_token", session.token);
+      localStorage.setItem("hermes_user", JSON.stringify(session));
+      if (!hasCap(session, "kds")) {
+        setError("Este dispositivo es de cocina. Usa el PIN de estaciones.");
+        return;
+      }
+      setUser(session);
+      setPin("");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function leave() {
+    api("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    setUser(null);
+    setPin("");
+  }
+
+  if (!user || !canKds) {
+    return (
+      <main className="shell">
+        <div className="kicker">{storeName} · Estaciones</div>
+        <h1>Iniciar sesión</h1>
+        <p className="tag">PIN de cocina: 2222</p>
+        {error && <p className="err">{error}</p>}
+        <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
+        <button className="primary" onClick={enter}>
+          Iniciar sesión
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="kds-screen">
+      <header className="kds-bar">
+        <div>
+          <div className="kicker">{storeName}</div>
+          <strong>Estaciones · {user.name}</strong>
+        </div>
+        <p className="kds-rotate muted">Mejor en horizontal</p>
+        <button className="tab" onClick={leave}>
+          Salir
+        </button>
+      </header>
+      <KdsView onAuthFail={leave} />
+    </main>
+  );
+}
+
+function KdsView({ onAuthFail }) {
   const [board, setBoard] = useState(null);
   const [error, setError] = useState("");
+  const [, setTick] = useState(0);
 
   const refresh = useCallback(async () => {
     setBoard(await api("/api/kds"));
   }, []);
 
   useEffect(() => {
-    refresh().catch((e) => setError(e.message));
-    const id = setInterval(() => refresh().catch(() => {}), 4000);
+    refresh().catch((e) => {
+      if (e.message === "No autorizado") {
+        onAuthFail?.();
+        return;
+      }
+      setError(e.message);
+    });
+    const id = setInterval(() => {
+      refresh().catch(() => {});
+      setTick((n) => n + 1);
+    }, 4000);
     return () => clearInterval(id);
-  }, [refresh]);
+  }, [refresh, onAuthFail]);
 
   async function bump(itemId, action) {
     try {
@@ -657,6 +783,10 @@ function KdsView() {
       });
       await refresh();
     } catch (e) {
+      if (e.message === "No autorizado") {
+        onAuthFail?.();
+        return;
+      }
       setError(e.message);
     }
   }
@@ -667,7 +797,7 @@ function KdsView() {
       ? "Este rubro no manda tickets a estación. Se entrega en caja."
       : mode === "replenish"
         ? "El buffet repone islas; no hay comanda por mesa."
-        : "Nada en cola. Envía desde Piso.";
+        : "Nada en cola. Envía desde Ventas.";
 
   return (
     <>
@@ -675,7 +805,7 @@ function KdsView() {
       {error && <p className="err">{error}</p>}
       {!board && <p className="muted">Cargando estaciones…</p>}
       {board && board.stations.length === 0 && <p className="muted">{emptyHint}</p>}
-      <div className="grid">
+      <div className="grid kds-grid">
         {(board?.stations || []).map((st) => (
           <section className="card kds" key={st.key}>
             <h2>
@@ -683,12 +813,15 @@ function KdsView() {
             </h2>
             {st.tickets.length === 0 && <p className="muted">Sin tickets</p>}
             {st.tickets.map((t) => (
-              <article className={`ticket ${t.status}`} key={t.item_id}>
+              <article className={`ticket ${ticketTone(t)}`} key={t.item_id}>
                 <header>
                   <strong>
                     {t.qty}× {t.name}
                   </strong>
-                  <span>{t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}</span>
+                  <span>
+                    {t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}
+                    {t.sent_at ? ` · ${waitLabel(t.sent_at)}` : ""}
+                  </span>
                 </header>
                 {t.modifiers?.length ? (
                   <p className="muted">{t.modifiers.map((m) => m.name).join(" · ")}</p>

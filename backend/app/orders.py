@@ -488,6 +488,7 @@ def station_tickets(station_key: str) -> list[dict]:
             "queue_number": r["queue_number"],
             "space": r["space_name"],
             "station": r["station_key"],
+            "sent_at": r["sent_at"].isoformat() if r.get("sent_at") else None,
             "modifiers": _item_mods(r["id"]),
         }
         for r in rows

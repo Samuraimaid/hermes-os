@@ -36,7 +36,7 @@ Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status 
 
 `GET /api/kds` agrupa los tickets por estación de producción.
 
-En el hub, pestaña **Estaciones**. El cocinero pasa `queued → prep → ready`.
-La vista se refresca cada 4 segundos. No hace falta WebSocket todavía.
+Ruta `/kds`: pantalla completa, apaisada. Si no hay sesión, pide PIN y queda en `/kds`.
+El cocinero pasa `queued → prep → ready`. Poll 4 s. Aviso a los 5 min (`--hermes-accent`), tarde a los 10 (`--hermes-late`). Void tachado. Sin sonido ni Recall.
 
 En **Ventas**, restaurante y bar ven el mapa en una franja. Debajo: ticket | artículos. Enviar va en el ticket. Cobrar (barra inferior) solo con cap `cash`. Un renglón anulado se tacha en el ticket y en KDS.

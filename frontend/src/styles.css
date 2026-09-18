@@ -9,6 +9,7 @@ html[data-theme="restaurant"] {
   --hermes-border: #282b30;
   --hermes-radius: 4px;
   --hermes-touch-feedback: rgba(197, 168, 128, 0.15);
+  --hermes-late: #e11d48;
 }
 
 html[data-theme="bar"] {
@@ -132,6 +133,32 @@ html[data-theme="restaurant"] body {
 }
 .cds-totals { margin-top: 28px; font-size: 22px; }
 .cds-total { font-size: 34px; border-bottom: 0; padding-top: 16px; }
+
+.kds-screen {
+  min-height: 100vh;
+  min-width: 100%;
+  padding: 12px 16px 20px;
+  background: var(--hermes-bg-app);
+  color: var(--hermes-text-main);
+  box-sizing: border-box;
+}
+.kds-screen .tag { display: none; }
+.kds-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.kds-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
+}
+.kds-screen .ticket { font-size: 17px; }
+.kds-rotate { display: none; }
+@media (orientation: portrait) {
+  .kds-rotate { display: block; }
+}
 h2 { font-size: 16px; margin: 0 0 12px; }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .rowbtn, .primary {
@@ -206,6 +233,14 @@ h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
   padding: 10px 12px; margin-top: 8px; background: var(--hermes-bg-app);
 }
 .ticket.prep { border-color: var(--hermes-accent); }
+.ticket.warn {
+  border-color: var(--hermes-accent);
+  background: var(--hermes-touch-feedback);
+}
+.ticket.late {
+  border-color: var(--hermes-late);
+  box-shadow: inset 0 0 0 1px var(--hermes-late);
+}
 .ticket header { display: flex; justify-content: space-between; gap: 8px; }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
 .actions .rowbtn, .actions .primary { width: auto; flex: 1; margin-top: 0; }

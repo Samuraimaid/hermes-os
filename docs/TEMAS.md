@@ -12,7 +12,7 @@ El hub aplica el tema **por defecto** del perfil (`GET /api/instance` → `profi
 | `qsr` | High-Contrast Pop | Midnight Street |
 | `convenience` | Corporate Clean | Retro Arcade |
 
-Variables comunes: `--hermes-bg-app`, `--hermes-bg-surface`, `--hermes-accent`, `--hermes-accent-hover`, `--hermes-text-main`, `--hermes-text-muted`, `--hermes-border`, `--hermes-radius`, `--hermes-touch-feedback`.
+Variables comunes: `--hermes-bg-app`, `--hermes-bg-surface`, `--hermes-accent`, `--hermes-accent-hover`, `--hermes-text-main`, `--hermes-text-muted`, `--hermes-border`, `--hermes-radius`, `--hermes-touch-feedback`, `--hermes-late` (rojo de ticket atrasado en KDS).
 
 ## restaurant — Fine Dining
 

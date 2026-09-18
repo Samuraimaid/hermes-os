@@ -58,6 +58,7 @@ Orden de commits (rama `main`):
 15. Nomenclatura UI (GUIA_PRODUCTO) + tema CSS por perfil (TEMAS)
 16. Ventas TPV (ticket | artículos | cobrar) + void de renglón
 17. CDS: ruta `/cds` + `GET /api/cds`
+18. KDS a pantalla completa `/kds` + color por tiempo
 
 ### API útil
 
@@ -80,7 +81,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Qué no está
 
-- WebSocket (KDS hace poll 4 s)
+- WebSocket (KDS y CDS hacen poll 4 s)
 - Inventario / recetas
 - Conector fiscal
 - Offline real del modo híbrido (hoy es bandera + docs)
