@@ -60,6 +60,10 @@ function isSalesPath() {
   return routePath() === "/ventas";
 }
 
+function isConfigPath() {
+  return routePath() === "/config";
+}
+
 function hasCap(session, cap) {
   const caps = session?.caps || [];
   return caps.includes(cap) || caps.includes("admin");
@@ -89,6 +93,9 @@ export default function App() {
   }
   if (isSalesPath()) {
     return <SalesScreen />;
+  }
+  if (isConfigPath()) {
+    return <ConfigScreen />;
   }
   const [user, setUser] = useState(() => {
     try {
@@ -208,6 +215,11 @@ export default function App() {
             </button>
           )}
           {canAdmin && (
+            <button className={view === "config" ? "tab on" : "tab"} onClick={() => setView("config")}>
+              Configuración
+            </button>
+          )}
+          {canAdmin && (
             <button className="tab" onClick={() => window.open("/cds", "hermes-cds")}>
               Pantalla cliente
             </button>
@@ -224,6 +236,7 @@ export default function App() {
       {view === "ventas" && (canAdmin || canCash) && (
         <SalesView canRefund={canCash} canAdmin={canAdmin} />
       )}
+      {view === "config" && canAdmin && <ConfigView />}
     </main>
   );
 }
@@ -244,6 +257,10 @@ function CdsView() {
 
     async function load() {
       try {
+        const inst = await api("/api/instance");
+        applyTheme(inst.profile);
+        applyCurrency(inst);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
         const data = await api("/api/cds");
         setTicket(data.ticket || null);
       } catch {
@@ -317,6 +334,159 @@ function CdsView() {
 }
 
 const PAY_LABEL = { cash: "Efectivo", card: "Tarjeta", transfer: "Transfer", other: "Otro" };
+
+function ConfigScreen() {
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hermes_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [storeName, setStoreName] = useState("Hermes OS");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyTheme(inst.profile);
+        applyCurrency(inst);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
+      })
+      .catch(() => applyTheme("restaurant"));
+  }, []);
+
+  async function enter() {
+    try {
+      setError("");
+      const session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      localStorage.setItem("hermes_token", session.token);
+      localStorage.setItem("hermes_user", JSON.stringify(session));
+      if (!hasCap(session, "admin")) {
+        setError("Solo el dueño entra a configuración.");
+        return;
+      }
+      setUser(session);
+      setPin("");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function leave() {
+    api("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    setUser(null);
+    setPin("");
+  }
+
+  if (!user || !hasCap(user, "admin")) {
+    return (
+      <main className="shell">
+        <div className="kicker">{storeName} · Configuración</div>
+        <h1>Iniciar sesión</h1>
+        <p className="tag">PIN del dueño: 0000</p>
+        {error && <p className="err">{error}</p>}
+        <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
+        <button className="primary" onClick={enter}>
+          Iniciar sesión
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="shell wide">
+      <div className="kicker">
+        Tienda {storeName} · Empleado {user.name}
+      </div>
+      <div className="kds-bar">
+        <h1>Configuración</h1>
+        <button className="tab" onClick={leave}>
+          Salir
+        </button>
+      </div>
+      <ConfigView />
+    </main>
+  );
+}
+
+function ConfigView() {
+  const [name, setName] = useState("");
+  const [currency, setCurrency] = useState("NIO");
+  const [taxOn, setTaxOn] = useState(false);
+  const [pct, setPct] = useState("15");
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyCurrency(inst);
+        setName(inst.venue?.name || inst.name || "");
+        setCurrency(inst.currency || inst.venue?.currency || "NIO");
+        setTaxOn(Boolean(inst.venue?.tax_enabled));
+        setPct(String(((inst.venue?.tax_bps || 1500) / 100).toFixed(0)));
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  async function save() {
+    try {
+      setError("");
+      setSaved("");
+      const bps = Math.round(Number(pct) * 100);
+      const out = await api("/api/venue/config", {
+        method: "POST",
+        body: JSON.stringify({
+          currency,
+          tax_enabled: taxOn,
+          tax_bps: Number.isFinite(bps) ? bps : 1500,
+        }),
+      });
+      applyCurrency(out);
+      setSaved("Guardado.");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <section className="card">
+      <h2>Tienda</h2>
+      {error && <p className="err">{error}</p>}
+      {saved && <p className="muted">{saved}</p>}
+      <p className="muted">Nombre (solo lectura en el demo)</p>
+      <input className="field" value={name} readOnly />
+      <p className="muted">Moneda</p>
+      <div className="actions">
+        {["NIO", "USD"].map((c) => (
+          <button
+            key={c}
+            className={currency === c ? "tab on" : "tab"}
+            onClick={() => setCurrency(c)}
+          >
+            {c === "NIO" ? "NIO (C$)" : "USD ($)"}
+          </button>
+        ))}
+      </div>
+      <label className="muted" style={{ display: "block", marginTop: 12 }}>
+        <input type="checkbox" checked={taxOn} onChange={(e) => setTaxOn(e.target.checked)} />{" "}
+        Sumar impuesto. No es factura fiscal.
+      </label>
+      <p className="muted">IVA %</p>
+      <input className="field" value={pct} onChange={(e) => setPct(e.target.value)} disabled={!taxOn} />
+      <button className="primary" onClick={save}>
+        Guardar
+      </button>
+    </section>
+  );
+}
 
 function SalesScreen() {
   const [user, setUser] = useState(() => {

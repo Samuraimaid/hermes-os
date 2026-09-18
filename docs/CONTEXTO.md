@@ -65,6 +65,7 @@ Orden de commits (rama `main`):
 22. Moneda NIO/C$ y TPV compacto (franja de mesas)
 23. Reembolso de recibo (no toca el ticket)
 24. Tipografía TPV: Roboto 400/500/700, dinero tabular-nums
+25. Configuración admin: moneda + IVA (`/config`)
 
 ### API útil
 

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS venues (
     timezone        TEXT NOT NULL DEFAULT 'America/Managua',
     tax_enabled     BOOLEAN NOT NULL DEFAULT FALSE,
     tax_bps         INT NOT NULL DEFAULT 1500,
+    currency        TEXT NOT NULL DEFAULT 'NIO',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

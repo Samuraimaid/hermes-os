@@ -721,26 +721,59 @@ def set_discount(order_id: int, discount_type: str | None, value: int = 0) -> di
     return order_out(loaded)
 
 
+SYMBOLS = {"NIO": "C$", "USD": "$"}
+
+
+def venue_public(venue: dict | None = None) -> dict:
+    row = venue or _venue()
+    code = (row.get("currency") or "NIO").strip().upper()
+    if code not in SYMBOLS:
+        code = "NIO"
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "slug": row["slug"],
+        "tax_enabled": bool(row.get("tax_enabled")),
+        "tax_bps": int(row.get("tax_bps") or 0),
+        "currency": code,
+        "symbol": SYMBOLS[code],
+    }
+
+
 def set_venue_tax(enabled: bool, bps: int = 1500) -> dict:
-    on = bool(enabled)
-    rate = max(0, min(10000, int(bps)))
+    return set_venue_config(tax_enabled=enabled, tax_bps=bps)
+
+
+def set_venue_config(
+    currency: str | None = None,
+    tax_enabled: bool | None = None,
+    tax_bps: int | None = None,
+) -> dict:
     venue = _venue()
-    db.execute(
-        "UPDATE venues SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
-        (on, rate, venue["id"]),
-    )
-    open_rows = db.fetch_all(
-        "SELECT id FROM orders WHERE venue_id = %s AND status = ANY(%s)",
-        (venue["id"], list(ACTIVE)),
-    )
-    for row in open_rows:
-        if _has_payments(row["id"]):
-            continue
+    if currency is not None:
+        code = (currency or "").strip().upper()
+        if code not in SYMBOLS:
+            raise ValueError("Moneda no válida")
+        db.execute("UPDATE venues SET currency = %s WHERE id = %s", (code, venue["id"]))
+    if tax_enabled is not None or tax_bps is not None:
+        on = bool(tax_enabled) if tax_enabled is not None else bool(venue.get("tax_enabled"))
+        rate = max(0, min(10000, int(tax_bps if tax_bps is not None else venue.get("tax_bps") or 1500)))
         db.execute(
-            "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
-            (on, rate, row["id"]),
+            "UPDATE venues SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+            (on, rate, venue["id"]),
         )
-    return {"tax_enabled": on, "tax_bps": rate}
+        open_rows = db.fetch_all(
+            "SELECT id FROM orders WHERE venue_id = %s AND status = ANY(%s)",
+            (venue["id"], list(ACTIVE)),
+        )
+        for row in open_rows:
+            if _has_payments(row["id"]):
+                continue
+            db.execute(
+                "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+                (on, rate, row["id"]),
+            )
+    return venue_public()
 
 
 def modules_ok() -> list[str]:

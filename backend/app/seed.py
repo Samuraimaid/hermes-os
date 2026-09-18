@@ -148,8 +148,8 @@ def ensure_demo_venue() -> dict | None:
     if not venue:
         venue = db.fetch_one(
             """
-            INSERT INTO venues (name, slug, profile, modules, tax_enabled, tax_bps)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO venues (name, slug, profile, modules, tax_enabled, tax_bps, currency)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING *
             """,
             (
@@ -159,6 +159,7 @@ def ensure_demo_venue() -> dict | None:
                 modules,
                 bool(settings.hermes_tax_enabled),
                 max(0, min(10000, int(settings.hermes_tax_bps))),
+                (settings.hermes_currency or "NIO").strip().upper() or "NIO",
             ),
         )
     else:

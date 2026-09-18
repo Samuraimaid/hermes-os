@@ -70,6 +70,12 @@ class TaxIn(BaseModel):
     bps: int = 1500
 
 
+class VenueConfigIn(BaseModel):
+    currency: str | None = None
+    tax_enabled: bool | None = None
+    tax_bps: int | None = None
+
+
 CURRENCY_SYMBOL = {"NIO": "C$", "USD": "$"}
 
 
@@ -78,8 +84,12 @@ def current_profile() -> str:
     return profile if profile in PROFILES else "restaurant"
 
 
-def currency_pair() -> tuple[str, str]:
-    code = (settings.hermes_currency or "NIO").strip().upper()
+def currency_pair(venue: dict | None = None) -> tuple[str, str]:
+    code = ""
+    if venue:
+        code = (venue.get("currency") or "").strip().upper()
+    if not code:
+        code = (settings.hermes_currency or "NIO").strip().upper()
     if code not in CURRENCY_SYMBOL:
         code = "NIO"
     return code, CURRENCY_SYMBOL[code]
@@ -89,7 +99,8 @@ def instance_payload(seed: dict | None = None) -> dict:
     profile = current_profile()
     modules = resolve_modules(profile, settings.hermes_modules)
     mech = mechanism_for(profile)
-    currency, symbol = currency_pair()
+    venue_row = (seed or {}).get("venue")
+    currency, symbol = currency_pair(venue_row)
     payload = {
         "name": settings.app_name,
         "env": settings.app_env,
@@ -103,13 +114,13 @@ def instance_payload(seed: dict | None = None) -> dict:
         "currency": currency,
         "symbol": symbol,
     }
-    if seed and seed.get("venue"):
+    if venue_row:
         payload["venue"] = {
-            "id": seed["venue"]["id"],
-            "name": seed["venue"]["name"],
-            "slug": seed["venue"]["slug"],
-            "tax_enabled": bool(seed["venue"].get("tax_enabled")),
-            "tax_bps": int(seed["venue"].get("tax_bps") or 0),
+            "id": venue_row["id"],
+            "name": venue_row["name"],
+            "slug": venue_row["slug"],
+            "tax_enabled": bool(venue_row.get("tax_enabled")),
+            "tax_bps": int(venue_row.get("tax_bps") or 0),
             "currency": currency,
             "symbol": symbol,
         }
@@ -295,6 +306,12 @@ def set_discount(order_id: int, body: DiscountIn):
 def set_venue_tax(body: TaxIn):
     _need_seed()
     return _ok(order_svc.set_venue_tax, body.enabled, body.bps)
+
+
+@app.post("/api/venue/config")
+def set_venue_config(body: VenueConfigIn):
+    _need_seed()
+    return _ok(order_svc.set_venue_config, body.currency, body.tax_enabled, body.tax_bps)
 
 
 @app.get("/api/stations/{station_key}/tickets")

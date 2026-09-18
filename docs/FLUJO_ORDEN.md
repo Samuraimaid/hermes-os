@@ -26,6 +26,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 13. `GET /api/sales/today` — resumen del día y lista de recibos (órdenes `closed`). Cap `cash` (dueño también).
 14. `POST /api/venue/tax` `{ enabled, bps }` — impuesto opcional de la tienda. `bps` 1500 = 15%. Cap `admin`. No toca cuentas con pagos.
 15. `POST /api/orders/{id}/refund` — reembolsa cobro + propina al método original (o `refund` si hubo varios). El recibo queda `refunded`; no se edita el ticket. Cap `cash`. Requiere turno abierto.
+16. `POST /api/venue/config` `{ currency, tax_enabled, tax_bps }` — configuración de tienda. Cap `admin`. Nombre de tienda no se edita en el demo.
 
 Por defecto `tax_enabled` es false: no se muestra IVA y el total es subtotal − descuento. Si el dueño lo enciende, se añade sobre (subtotal − descuento). No es factura fiscal.
 

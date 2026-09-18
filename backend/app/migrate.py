@@ -97,6 +97,11 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.10.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE venues ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'NIO'",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.11.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 
