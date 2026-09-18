@@ -71,8 +71,46 @@ html[data-theme="restaurant"] body {
 }
 
 .shell { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
-.shell.wide { max-width: 1080px; }
+.shell.wide { max-width: 1200px; padding-bottom: 96px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.pos {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(280px, 1.4fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 860px) {
+  .pos { grid-template-columns: 1fr; }
+}
+.map-strip { margin-top: 0; }
+.map-strip .tiles { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+.map-strip .tile { aspect-ratio: auto; min-height: 52px; }
+.zones.strip { display: flex; flex-wrap: wrap; gap: 16px; }
+.zones.strip > div { flex: 1; min-width: 200px; }
+.article-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.line { display: flex; align-items: stretch; gap: 6px; }
+.line .row.pick { flex: 1; border-bottom: 0; }
+.void-btn {
+  font: inherit; cursor: pointer;
+  border: 1px solid var(--hermes-border); background: transparent;
+  color: #e11d48; border-radius: var(--hermes-radius); padding: 4px 8px;
+}
+.line-void, .line-void .row.pick { text-decoration: line-through; color: #e11d48; }
+.ticket.void { text-decoration: line-through; color: #e11d48; opacity: 0.85; }
+.pay-bar {
+  position: sticky; bottom: 12px; z-index: 2;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  margin-top: 16px; padding: 12px 16px;
+  background: var(--hermes-bg-surface);
+  border: 1px solid var(--hermes-border);
+  border-radius: var(--hermes-radius);
+}
+.pay-bar .primary { margin-top: 0; width: auto; min-width: 140px; }
 h2 { font-size: 16px; margin: 0 0 12px; }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .rowbtn, .primary {

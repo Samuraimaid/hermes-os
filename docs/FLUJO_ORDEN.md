@@ -20,6 +20,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 7. `POST /api/orders/{id}/close` — sale de la pista. **No cobra.** Solo si está lista o entregada.
 8. `POST /api/items/{id}/move` `{ to_space_id }` — el renglón cambia de cuenta. Si el destino no tiene orden abierta, se crea. Conserva status y `sent_at`; cocina no recibe un ticket nuevo.
 9. `POST /api/orders/{id}/merge` `{ onto_order_id }` — todos los ítems vivos pasan a la otra cuenta.
+10. `POST /api/items/{id}/void` — anula el renglón. Falla si hay pagos. Si no quedan ítems vivos, cierra el ticket. Cap `floor`.
 
 Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status de ambas; si el origen queda vacío, se cierra (libera la mesa). Solo entre espacios `table` o `tab`. Cap `floor`.
 
@@ -37,4 +38,4 @@ Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status 
 En el hub, pestaña **Estaciones**. El cocinero pasa `queued → prep → ready`.
 La vista se refresca cada 4 segundos. No hace falta WebSocket todavía.
 
-En **Piso**, restaurante y bar ven un mapa por zona. El mesero abre una mesa, mueve renglones o junta cuentas. Los otros rubros siguen con la lista de unidades.
+En **Ventas**, restaurante y bar ven el mapa en una franja. Debajo: ticket | artículos. Enviar va en el ticket. Cobrar (barra inferior) solo con cap `cash`. Un renglón anulado se tacha en el ticket y en KDS.

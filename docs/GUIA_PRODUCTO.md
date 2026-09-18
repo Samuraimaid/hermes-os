@@ -144,7 +144,7 @@ Iniciar sesión (PIN)
 
 1. Renombrar UI a esta nomenclatura — hecho  
 2. Temas CSS por perfil (`docs/TEMAS.md`) — default del perfil hecho  
-3. Pantalla Ventas ticket | carta | cobrar  
+3. Pantalla Ventas ticket | carta | cobrar — hecho (void en el mismo corte)  
 4. Void de renglón + KDS tachado + colores de tiempo  
 5. Ruta CDS mínima  
 6. Descuento + impuesto (ticket interno)  

@@ -339,6 +339,28 @@ def bump_item(item_id: int, action: str) -> dict:
     return order_out(loaded)
 
 
+def void_item(item_id: int) -> dict:
+    item = db.fetch_one("SELECT * FROM order_items WHERE id = %s", (item_id,))
+    if not item:
+        raise ValueError("Ítem no encontrado")
+    if item["status"] == "void":
+        raise ValueError("El renglón ya está anulado")
+
+    bundle = _load_order(item["order_id"])
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    if bundle["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La orden está cerrada")
+    if _has_payments(bundle["order"]["id"]):
+        raise ValueError("Hay pagos en la cuenta")
+
+    db.execute("UPDATE order_items SET status = 'void' WHERE id = %s", (item_id,))
+    _close_if_empty(bundle["order"]["id"])
+    loaded = _load_order(item["order_id"])
+    assert loaded
+    return order_out(loaded)
+
+
 def _refresh_order_status(order_id: int) -> None:
     items = db.fetch_all(
         "SELECT status FROM order_items WHERE order_id = %s AND status <> 'void'",
@@ -426,7 +448,7 @@ def station_tickets(station_key: str) -> list[dict]:
         WHERE o.venue_id = %s
           AND s.key = %s
           AND i.sent_at IS NOT NULL
-          AND i.status IN ('queued', 'prep')
+          AND i.status IN ('queued', 'prep', 'void')
         ORDER BY i.sent_at
         """,
         (venue["id"], station_key),

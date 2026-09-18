@@ -234,6 +234,12 @@ def bump_item(item_id: int, body: BumpIn):
     return _ok(order_svc.bump_item, item_id, body.action)
 
 
+@app.post("/api/items/{item_id}/void")
+def void_item(item_id: int):
+    _need_seed()
+    return _ok(order_svc.void_item, item_id)
+
+
 @app.post("/api/items/{item_id}/move")
 def move_item(item_id: int, body: MoveItemIn):
     _need_seed()

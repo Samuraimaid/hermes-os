@@ -27,7 +27,7 @@ Implementado hasta nomenclatura de UI y tema por perfil:
 - UI: Iniciar sesión, Artículo, Ticket, Recibo, Turno, Empleado, Tienda
 - Tema CSS por defecto del perfil (`docs/TEMAS.md`)
 
-Siguiente paso: pantalla Ventas ticket | artículos | cobrar. No inventario ni factura fiscal.
+Siguiente paso: descuento + impuesto interno, o CDS. No inventario ni factura fiscal.
 
 ## Arranque
 

@@ -114,7 +114,7 @@ export default function App() {
       <div className="tabs">
         {canFloor && (
           <button className={view === "piso" ? "tab on" : "tab"} onClick={() => setView("piso")}>
-            Piso
+            Ventas
           </button>
         )}
         {canKds && (
@@ -136,7 +136,7 @@ export default function App() {
           Salir
         </button>
       </div>
-      {view === "piso" && canFloor && <FloorView />}
+      {view === "piso" && canFloor && <FloorView canCash={canCash} />}
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
       {view === "kiosko" && canKiosk && <KioskView />}
@@ -144,7 +144,7 @@ export default function App() {
   );
 }
 
-function FloorView() {
+function FloorView({ canCash }) {
   const [instance, setInstance] = useState(null);
   const [spaces, setSpaces] = useState([]);
   const [products, setProducts] = useState([]);
@@ -154,6 +154,7 @@ function FloorView() {
   const [picked, setPicked] = useState([]);
   const [selected, setSelected] = useState([]);
   const [destId, setDestId] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -228,6 +229,15 @@ function FloorView() {
     return order;
   }
 
+  const categories = [];
+  for (const p of products) {
+    const cat = p.category || "Artículos";
+    const last = categories[categories.length - 1];
+    if (!last || last.name !== cat) categories.push({ name: cat, items: [p] });
+    else last.items.push(p);
+  }
+  const due = current ? current.due_cents ?? current.precuenta.subtotal_cents : 0;
+
   return (
     <>
       <p className="tag">
@@ -236,123 +246,53 @@ function FloorView() {
           : "El mensaje llega."}
       </p>
       {error && <p className="err">{error}</p>}
-      <div className="grid">
-        <section className="card">
-          <h2>{useMap ? "Mapa" : "Unidades"}</h2>
-          {useMap ? (
-            <div className="zones">
-              {zones.map((z) => (
-                <div key={z.name}>
-                  <div className="zone-label">{z.name}</div>
-                  <div className="tiles">
-                    {z.spaces.map((s) => {
-                      const occ = orderBySpace[s.id];
-                      const on = current?.space?.id === s.id;
-                      return (
-                        <button
-                          key={s.id}
-                          className={`tile${occ ? " busy" : ""}${on ? " current" : ""}`}
-                          onClick={() => run(() => openSpace(s.id))}
-                        >
-                          <strong>{s.name}</strong>
-                          <span className="meta">
-                            {occ ? `${occ.precuenta.item_count} ítems` : "libre"}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+      <section className="card map-strip">
+        <h2>{useMap ? "Mesas" : "Tickets"}</h2>
+        {useMap ? (
+          <div className="zones strip">
+            {zones.map((z) => (
+              <div key={z.name}>
+                <div className="zone-label">{z.name}</div>
+                <div className="tiles">
+                  {z.spaces.map((s) => {
+                    const occ = orderBySpace[s.id];
+                    const on = current?.space?.id === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        className={`tile${occ ? " busy" : ""}${on ? " current" : ""}`}
+                        onClick={() => run(() => openSpace(s.id))}
+                      >
+                        <strong>{s.name}</strong>
+                        <span className="meta">
+                          {occ ? `${occ.precuenta.item_count}` : "libre"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="list">
-              {floorSpaces.map((s) => (
-                <button
-                  key={s.id}
-                  className="rowbtn"
-                  onClick={() => run(() => openSpace(s.id))}
-                >
-                  <strong>{s.name}</strong>
-                  <span>{s.kind}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-        <section className="card">
-          <h2>Artículos</h2>
-          <div className="list">
-            {products.map((p) => (
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="tiles">
+            {floorSpaces.map((s) => (
               <button
-                key={p.id}
-                className="rowbtn"
-                disabled={!current}
-                onClick={() => {
-                  if (p.modifiers && p.modifiers.length) {
-                    setPending(p);
-                    setPicked([]);
-                    return;
-                  }
-                  run(async () =>
-                    api(`/api/orders/${current.id}/items`, {
-                      method: "POST",
-                      body: JSON.stringify({ product_id: p.id, qty: 1 }),
-                    })
-                  );
-                }}
+                key={s.id}
+                className={`tile${orderBySpace[s.id] ? " busy" : ""}${current?.space?.id === s.id ? " current" : ""}`}
+                onClick={() => run(() => openSpace(s.id))}
               >
-                <strong>{p.name}</strong>
-                <span>{p.station || "caja"} · {(p.price_cents / 100).toFixed(2)}</span>
+                <strong>{s.name}</strong>
+                <span className="meta">{s.kind}</span>
               </button>
             ))}
           </div>
-          {pending && (
-            <div className="ticket">
-              <p>
-                <strong>{pending.name}</strong>
-              </p>
-              {pending.modifiers.map((m) => (
-                <label key={m.id} className="muted" style={{ display: "block", marginTop: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(m.id)}
-                    onChange={() =>
-                      setPicked(
-                        picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id]
-                      )
-                    }
-                  />{" "}
-                  {m.name}
-                  {m.price_delta_cents ? ` (+${(m.price_delta_cents / 100).toFixed(2)})` : ""}
-                </label>
-              ))}
-              <button
-                className="primary"
-                onClick={() =>
-                  run(async () => {
-                    const order = await api(`/api/orders/${current.id}/items`, {
-                      method: "POST",
-                      body: JSON.stringify({
-                        product_id: pending.id,
-                        qty: 1,
-                        modifier_ids: picked,
-                      }),
-                    });
-                    setPending(null);
-                    setPicked([]);
-                    return order;
-                  })
-                }
-              >
-                Agregar
-              </button>
-            </div>
-          )}
-        </section>
-        <section className="card">
+        )}
+      </section>
+      <div className="pos">
+        <section className="card pos-ticket">
           <h2>{current ? current.space?.name || `Ticket #${current.id}` : "Ticket"}</h2>
-          {!current && <p className="muted">Abre un ticket para empezar.</p>}
+          {!current && <p className="muted">Toca una mesa para abrir un ticket.</p>}
           {current && (
             <>
               <p className="muted">
@@ -361,27 +301,43 @@ function FloorView() {
               </p>
               <div className="list">
                 {current.items.map((i) => (
-                  <button
-                    type="button"
-                    className={`row pick${selected.includes(i.id) ? " picked" : ""}`}
+                  <div
+                    className={`line${selected.includes(i.id) ? " picked" : ""}${i.status === "void" ? " line-void" : ""}`}
                     key={i.id}
-                    onClick={() => toggleItem(i.id)}
                   >
-                    <span>
-                      {i.qty}× {i.name}
-                      {i.modifiers?.length
-                        ? ` (${i.modifiers.map((m) => m.name).join(", ")})`
-                        : ""}
-                    </span>
-                    <span>
-                      {i.station || "—"} · {i.status}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      className="row pick"
+                      disabled={i.status === "void"}
+                      onClick={() => toggleItem(i.id)}
+                    >
+                      <span>
+                        {i.qty}× {i.name}
+                        {i.modifiers?.length
+                          ? ` (${i.modifiers.map((m) => m.name).join(", ")})`
+                          : ""}
+                      </span>
+                      <span>{money(i.price_cents)}</span>
+                    </button>
+                    {i.status !== "void" && (
+                      <button
+                        type="button"
+                        className="void-btn"
+                        onClick={() =>
+                          run(async () => {
+                            setSelected((prev) => prev.filter((id) => id !== i.id));
+                            return api(`/api/items/${i.id}/void`, { method: "POST" });
+                          })
+                        }
+                      >
+                        Anular
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
               <p className="summary">
-                Precuenta: {(current.precuenta.subtotal_cents / 100).toFixed(2)} ·{" "}
-                {current.precuenta.item_count} ítems
+                Ticket: {money(current.precuenta.subtotal_cents)} · {current.precuenta.item_count} artículos
               </p>
               {useMap && destSpaces.length > 0 && (
                 <div className="ticket">
@@ -422,7 +378,7 @@ function FloorView() {
                     </button>
                     <button
                       className="rowbtn"
-                      disabled={!destId || !current.items.length}
+                      disabled={!destId || !current.items.some((i) => i.status !== "void")}
                       onClick={() =>
                         run(async () => {
                           const spaceId = Number(destId);
@@ -453,9 +409,7 @@ function FloorView() {
               <button
                 className="primary"
                 onClick={() =>
-                  run(async () => {
-                    return api(`/api/orders/${current.id}/send`, { method: "POST" });
-                  })
+                  run(async () => api(`/api/orders/${current.id}/send`, { method: "POST" }))
                 }
               >
                 Enviar
@@ -464,42 +418,134 @@ function FloorView() {
                 <button
                   className="rowbtn"
                   onClick={() =>
-                    run(async () => {
-                      return api(`/api/orders/${current.id}/deliver`, { method: "POST" });
-                    })
+                    run(async () => api(`/api/orders/${current.id}/deliver`, { method: "POST" }))
                   }
                 >
                   Entregar
                 </button>
               )}
-              {(current.status === "ready" || current.status === "delivered") && (
-                <button
-                  className="primary"
-                  onClick={() =>
-                    run(async () => {
-                      return api(`/api/orders/${current.id}/close`, { method: "POST" });
-                    })
-                  }
-                >
-                  Cerrar pista
-                </button>
-              )}
             </>
           )}
         </section>
+        <section className="card pos-articles">
+          <h2>Artículos</h2>
+          {!current && <p className="muted">Abre un ticket para vender.</p>}
+          {categories.map((cat) => (
+            <div key={cat.name}>
+              <div className="zone-label">{cat.name}</div>
+              <div className="article-grid">
+                {cat.items.map((p) => (
+                  <button
+                    key={p.id}
+                    className="rowbtn"
+                    disabled={!current}
+                    onClick={() => {
+                      if (p.modifiers && p.modifiers.length) {
+                        setPending(p);
+                        setPicked([]);
+                        return;
+                      }
+                      run(async () =>
+                        api(`/api/orders/${current.id}/items`, {
+                          method: "POST",
+                          body: JSON.stringify({ product_id: p.id, qty: 1 }),
+                        })
+                      );
+                    }}
+                  >
+                    <strong>{p.name}</strong>
+                    <span>{money(p.price_cents)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {pending && (
+            <div className="ticket">
+              <p>
+                <strong>Modificador · {pending.name}</strong>
+              </p>
+              {pending.modifiers.map((m) => (
+                <label key={m.id} className="muted" style={{ display: "block", marginTop: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(m.id)}
+                    onChange={() =>
+                      setPicked(
+                        picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id]
+                      )
+                    }
+                  />{" "}
+                  {m.name}
+                  {m.price_delta_cents ? ` (+${money(m.price_delta_cents)})` : ""}
+                </label>
+              ))}
+              <button
+                className="primary"
+                onClick={() =>
+                  run(async () => {
+                    const order = await api(`/api/orders/${current.id}/items`, {
+                      method: "POST",
+                      body: JSON.stringify({
+                        product_id: pending.id,
+                        qty: 1,
+                        modifier_ids: picked,
+                      }),
+                    });
+                    setPending(null);
+                    setPicked([]);
+                    return order;
+                  })
+                }
+              >
+                Agregar
+              </button>
+            </div>
+          )}
+        </section>
       </div>
-      <section className="card" style={{ marginTop: 18 }}>
-        <h2>Tickets abiertos</h2>
-        {orders.length === 0 && <p className="muted">No hay tickets abiertos.</p>}
-        {orders.map((o) => (
-          <button key={o.id} className="rowbtn" onClick={() => setCurrent(o)}>
-            <strong>
-              {o.space?.name || `#${o.id}`} · {o.status}
-            </strong>
-            <span>{o.precuenta.item_count} ítems</span>
+      {canCash && current && (
+        <div className="pay-bar">
+          <strong>Total {money(due)}</strong>
+          <div className="actions">
+            {["cash", "card", "transfer"].map((m) => (
+              <button
+                key={m}
+                className={payMethod === m ? "tab on" : "tab"}
+                onClick={() => setPayMethod(m)}
+              >
+                {m === "cash" ? "Efectivo" : m === "card" ? "Tarjeta" : "Transfer"}
+              </button>
+            ))}
+          </div>
+          <button
+            className="primary"
+            disabled={!due}
+            onClick={() =>
+              run(async () => {
+                let shift = await api("/api/shift");
+                if (!shift) {
+                  shift = await api("/api/shift/open", {
+                    method: "POST",
+                    body: JSON.stringify({ opening_cash_cents: 0 }),
+                  });
+                }
+                const out = await api(`/api/orders/${current.id}/pay`, {
+                  method: "POST",
+                  body: JSON.stringify({
+                    method: payMethod,
+                    amount_cents: due,
+                    tip_cents: 0,
+                  }),
+                });
+                return out.order || out;
+              })
+            }
+          >
+            Cobrar
           </button>
-        ))}
-      </section>
+        </div>
+      )}
     </>
   );
 }
@@ -564,6 +610,7 @@ function KdsView() {
                   <p className="muted">{t.modifiers.map((m) => m.name).join(" · ")}</p>
                 ) : null}
                 {t.notes && <p className="muted">{t.notes}</p>}
+                {t.status !== "void" && (
                 <div className="actions">
                   {t.status === "queued" && (
                     <button className="rowbtn" onClick={() => bump(t.item_id, "prep")}>
@@ -576,6 +623,7 @@ function KdsView() {
                     </button>
                   )}
                 </div>
+                )}
               </article>
             ))}
           </section>
