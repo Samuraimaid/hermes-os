@@ -27,7 +27,7 @@ Implementado hasta nomenclatura de UI y tema por perfil:
 - UI: Iniciar sesión, Artículo, Ticket, Recibo, Turno, Empleado, Tienda
 - Tema CSS por defecto del perfil (`docs/TEMAS.md`)
 
-Siguiente paso: impuesto interno, o catálogo de artículos. No inventario ni factura fiscal.
+Siguiente paso: catálogo de artículos en back office, o reembolso. No inventario ni factura fiscal.
 
 ## Arranque
 

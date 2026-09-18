@@ -148,16 +148,22 @@ def ensure_demo_venue() -> dict | None:
     if not venue:
         venue = db.fetch_one(
             """
-            INSERT INTO venues (name, slug, profile, modules)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO venues (name, slug, profile, modules, tax_percent)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING *
             """,
-            (settings.venue_name, settings.venue_slug, profile, modules),
+            (
+                settings.venue_name,
+                settings.venue_slug,
+                profile,
+                modules,
+                max(0, min(100, settings.hermes_tax_percent)),
+            ),
         )
     else:
         db.execute(
-            "UPDATE venues SET profile = %s, modules = %s, name = %s WHERE id = %s",
-            (profile, modules, settings.venue_name, venue["id"]),
+            "UPDATE venues SET profile = %s, modules = %s, name = %s, tax_percent = %s WHERE id = %s",
+            (profile, modules, settings.venue_name, max(0, min(100, settings.hermes_tax_percent)), venue["id"]),
         )
         venue = db.fetch_one("SELECT * FROM venues WHERE id = %s", (venue["id"],))
 

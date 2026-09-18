@@ -82,7 +82,11 @@ def order_out(bundle: dict) -> dict:
         discount = 0
         kind = None
         raw = 0
-    total = max(0, subtotal - discount)
+    net = max(0, subtotal - discount)
+    pct = order.get("tax_percent")
+    pct = 0 if pct is None else max(0, min(100, int(pct)))
+    tax = net * pct // 100 if pct else 0
+    total = net + tax
     return {
         "id": order["id"],
         "status": order["status"],
@@ -113,10 +117,12 @@ def order_out(bundle: dict) -> dict:
             for i in items
         ],
         "discount": {"type": kind, "value": raw} if kind else None,
+        "tax_percent": pct,
         "precuenta": {
             "item_count": sum(i["qty"] for i in items if i["status"] != "void"),
             "subtotal_cents": subtotal,
             "discount_cents": discount,
+            "tax_cents": tax,
             "total_cents": total,
         },
         "paid_cents": paid,
@@ -188,6 +194,13 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
         if existing:
             bundle = _load_order(existing["id"])
             assert bundle
+            if bundle["order"].get("tax_percent") is None and not _has_payments(existing["id"]):
+                db.execute(
+                    "UPDATE orders SET tax_percent = %s WHERE id = %s",
+                    (int(venue.get("tax_percent") or 0), existing["id"]),
+                )
+                bundle = _load_order(existing["id"])
+                assert bundle
             return order_out(bundle)
 
     origin = ORIGIN_BY_SPACE.get(space["kind"], "mostrador")
@@ -208,12 +221,12 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
     created = db.fetch_one(
         """
         INSERT INTO orders (
-            venue_id, space_id, origin, status, cover_count, queue_number, dining_option
+            venue_id, space_id, origin, status, cover_count, queue_number, dining_option, tax_percent
         )
-        VALUES (%s, %s, %s, 'open', %s, %s, %s)
+        VALUES (%s, %s, %s, 'open', %s, %s, %s, %s)
         RETURNING *
         """,
-        (venue["id"], space_id, origin, covers, queue_no, option),
+        (venue["id"], space_id, origin, covers, queue_no, option, int(venue.get("tax_percent") or 0)),
     )
     return order_out({"order": created, "items": [], "space": space})
 
@@ -689,6 +702,21 @@ def set_discount(order_id: int, discount_type: str | None, value: int = 0) -> di
     loaded = _load_order(order_id)
     assert loaded
     return order_out(loaded)
+
+
+def set_venue_tax(percent: int) -> dict:
+    pct = max(0, min(100, int(percent)))
+    venue = _venue()
+    db.execute("UPDATE venues SET tax_percent = %s WHERE id = %s", (pct, venue["id"]))
+    open_rows = db.fetch_all(
+        "SELECT id FROM orders WHERE venue_id = %s AND status = ANY(%s)",
+        (venue["id"], list(ACTIVE)),
+    )
+    for row in open_rows:
+        if _has_payments(row["id"]):
+            continue
+        db.execute("UPDATE orders SET tax_percent = %s WHERE id = %s", (pct, row["id"]))
+    return {"tax_percent": pct}
 
 
 def modules_ok() -> list[str]:

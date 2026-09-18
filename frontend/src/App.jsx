@@ -234,7 +234,8 @@ function CdsView() {
   const live = (ticket?.items || []).filter((i) => i.status !== "void");
   const subtotal = ticket?.precuenta?.subtotal_cents || 0;
   const discount = ticket?.precuenta?.discount_cents || 0;
-  const total = ticket?.precuenta?.total_cents ?? subtotal - discount;
+  const tax = ticket?.precuenta?.tax_cents || 0;
+  const total = ticket?.precuenta?.total_cents ?? subtotal - discount + tax;
 
   return (
     <main className="cds">
@@ -270,6 +271,12 @@ function CdsView() {
               <div className="row">
                 <span className="label">Descuento</span>
                 <strong>−{money(discount)}</strong>
+              </div>
+            )}
+            {tax > 0 && (
+              <div className="row">
+                <span className="label">Impuesto {ticket.tax_percent ? `${ticket.tax_percent}%` : ""}</span>
+                <strong>{money(tax)}</strong>
               </div>
             )}
             <div className="row cds-total">
@@ -390,6 +397,10 @@ function SalesView() {
         <div className="row">
           <span className="label">Descuentos</span>
           <strong>{money(report.discount_cents)}</strong>
+        </div>
+        <div className="row">
+          <span className="label">Impuestos</span>
+          <strong>{money(report.tax_cents)}</strong>
         </div>
         <div className="row">
           <span className="label">Propinas</span>
@@ -637,10 +648,14 @@ function FloorView({ canCash }) {
                 {(current.precuenta.discount_cents || 0) > 0
                   ? ` · descuento −${money(current.precuenta.discount_cents)}`
                   : ""}
+                {(current.precuenta.tax_cents || 0) > 0
+                  ? ` · impuesto ${current.tax_percent || 0}% ${money(current.precuenta.tax_cents)}`
+                  : ""}
                 {" · "}
                 total {money(current.precuenta.total_cents ?? current.precuenta.subtotal_cents)} ·{" "}
                 {current.precuenta.item_count} artículos
               </p>
+              <p className="muted">El impuesto es interno, no factura fiscal.</p>
               <div className="ticket">
                 <p className="muted">Descuento de la cuenta</p>
                 <div className="actions">

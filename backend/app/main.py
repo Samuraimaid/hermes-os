@@ -65,6 +65,10 @@ class DiscountIn(BaseModel):
     value: int = 0
 
 
+class TaxIn(BaseModel):
+    percent: int = 0
+
+
 def current_profile() -> str:
     profile = settings.hermes_profile.strip().lower()
     return profile if profile in PROFILES else "restaurant"
@@ -90,6 +94,7 @@ def instance_payload(seed: dict | None = None) -> dict:
             "id": seed["venue"]["id"],
             "name": seed["venue"]["name"],
             "slug": seed["venue"]["slug"],
+            "tax_percent": int(seed["venue"].get("tax_percent") or 0),
         }
         payload["counts"] = {
             "spaces": len(seed.get("spaces") or []),
@@ -267,6 +272,12 @@ def merge_order(order_id: int, body: MergeOrderIn):
 def set_discount(order_id: int, body: DiscountIn):
     _need_seed()
     return _ok(order_svc.set_discount, order_id, body.type, body.value)
+
+
+@app.post("/api/venue/tax")
+def set_venue_tax(body: TaxIn):
+    _need_seed()
+    return _ok(order_svc.set_venue_tax, body.percent)
 
 
 @app.get("/api/stations/{station_key}/tickets")

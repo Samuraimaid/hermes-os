@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     venue_name: str = "Local demo"
     venue_slug: str = "demo"
     hermes_deployment: str = "local"
+    hermes_tax_percent: int = 16
 
 
 settings = Settings()

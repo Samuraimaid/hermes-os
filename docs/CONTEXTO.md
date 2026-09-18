@@ -61,6 +61,7 @@ Orden de commits (rama `main`):
 18. KDS a pantalla completa `/kds` + color por tiempo
 19. Descuento por cuenta (% o monto)
 20. Back office mínimo: `/ventas` + `GET /api/sales/today`
+21. Impuesto de tienda (añadido, demo 16%)
 
 ### API útil
 
@@ -72,7 +73,7 @@ Orden de commits (rama `main`):
 - `POST /api/items/{id}/void`
 - `POST /api/orders/{id}/discount` `{ type, value }`
 - `GET /api/cds` (sin PIN; ticket activo)
-- `GET /api/sales/today` (cap `admin`)
+- `GET /api/sales/today` (cap `admin`) · `POST /api/venue/tax` `{ percent }`
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
 
@@ -95,7 +96,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Siguiente paso acordado
 
-1. Impuesto interno (`docs/GUIA_PRODUCTO.md`).
+1. Catálogo de artículos en back office, o reembolso (`docs/GUIA_PRODUCTO.md`).
 2. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
 
 ## Cómo pedirle a Grok en VS Code

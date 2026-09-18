@@ -67,7 +67,7 @@ def day_report() -> dict:
         (venue["id"], tz, tz),
     )
     receipts = []
-    gross = discount = tips = collected = 0
+    gross = discount = tax = tips = collected = 0
     for row in rows:
         bundle = _load_order(row["id"])
         if not bundle:
@@ -91,6 +91,7 @@ def day_report() -> dict:
         pc = body["precuenta"]
         gross += pc.get("subtotal_cents") or 0
         discount += pc.get("discount_cents") or 0
+        tax += pc.get("tax_cents") or 0
         tips += rec_tips
         collected += rec_paid
         space = body.get("space")
@@ -103,6 +104,7 @@ def day_report() -> dict:
                 "space": {"key": space["key"], "name": space["name"]} if space else None,
                 "subtotal_cents": pc.get("subtotal_cents") or 0,
                 "discount_cents": pc.get("discount_cents") or 0,
+                "tax_cents": pc.get("tax_cents") or 0,
                 "total_cents": pc.get("total_cents") or 0,
                 "collected_cents": rec_paid,
                 "tips_cents": rec_tips,
@@ -114,6 +116,7 @@ def day_report() -> dict:
         "date": str(day["d"]) if day else None,
         "gross_cents": gross,
         "discount_cents": discount,
+        "tax_cents": tax,
         "tips_cents": tips,
         "collected_cents": collected,
         "receipt_count": len(receipts),
