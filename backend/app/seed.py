@@ -18,9 +18,9 @@ def _ensure_kiosk_space(venue_id: int) -> None:
     db.execute(
         """
         INSERT INTO spaces (venue_id, key, name, kind, zone, capacity, sort)
-        VALUES (%s, 'kiosko', 'Kiosco', 'kiosk', 'Autoservicio', None, 90)
+        VALUES (%s, 'kiosko', 'Kiosco', 'kiosk', 'Autoservicio', %s, 90)
         """,
-        (venue_id,),
+        (venue_id, None),
     )
 
 
