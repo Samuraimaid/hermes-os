@@ -2,7 +2,7 @@
 
 Variables `:root` para inyectar según `HERMES_PROFILE`. No son marca de un cliente: cada local elige un tema dentro de su rubro.
 
-Aplicar **después** del mapa de mesas. Hasta entonces el hub usa el CSS actual.
+El hub aplica el tema **por defecto** del perfil (`GET /api/instance` → `profile` → `html[data-theme]`). La alternativa (`HERMES_THEME`) queda para después.
 
 | Perfil | Tema por defecto | Alternativa |
 |---|---|---|
@@ -194,8 +194,8 @@ Uso: snacks, gaming, público joven.
 }
 ```
 
-## Cómo cablearlo (cuando toque)
+## Cómo está cableado
 
-`GET /api/instance` ya trae `profile`. El frontend pone `data-theme` o clase `theme-{profile}` en `body` y mapea componentes a las variables (`background: var(--hermes-bg-surface)`).
+`GET /api/instance` trae `profile`. El frontend pone `data-theme="{profile}"` en `html` y los componentes usan `var(--hermes-*)`. No hay hex sueltos en botones ni tarjetas.
 
-Tema por defecto del perfil primero; la alternativa se elige después con `HERMES_THEME` si hace falta. No hardcodear hex en cada componente.
+Tema por defecto del perfil primero; la alternativa se elige después con `HERMES_THEME` si hace falta.

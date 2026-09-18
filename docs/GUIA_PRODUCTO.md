@@ -142,8 +142,8 @@ Iniciar sesión (PIN)
 
 ## Orden de construcción (close-loop)
 
-1. Renombrar UI a esta nomenclatura  
-2. Temas CSS por perfil (`docs/TEMAS.md`)  
+1. Renombrar UI a esta nomenclatura — hecho  
+2. Temas CSS por perfil (`docs/TEMAS.md`) — default del perfil hecho  
 3. Pantalla Ventas ticket | carta | cobrar  
 4. Void de renglón + KDS tachado + colores de tiempo  
 5. Ruta CDS mínima  

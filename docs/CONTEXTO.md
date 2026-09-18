@@ -55,6 +55,7 @@ Orden de commits (rama `main`):
 12. `53367dd` Kiosco de autoservicio
 13. `6933d2f` Seed del kiosco: capacity como NULL
 14. Mapa de mesas + mover/juntar ítems entre cuentas
+15. Nomenclatura UI (GUIA_PRODUCTO) + tema CSS por perfil (TEMAS)
 
 ### API útil
 
@@ -85,7 +86,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Siguiente paso acordado
 
-1. Recorrer Piso con PIN `1111`: mapa, mover un renglón, juntar dos mesas.
+1. Pantalla Ventas: ticket | artículos | cobrar (`docs/GUIA_PRODUCTO.md`).
 2. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
 
 ## Cómo pedirle a Grok en VS Code

@@ -1,17 +1,73 @@
-:root {
-  --ink: #161410;
-  --paper: #f6f1e8;
-  --gold: #c4a35a;
-  --line: #d9cdb8;
-  --muted: #5c5048;
+:root,
+html[data-theme="restaurant"] {
+  --hermes-bg-app: #0f1011;
+  --hermes-bg-surface: #17191b;
+  --hermes-accent: #c5a880;
+  --hermes-accent-hover: #e2cfa8;
+  --hermes-text-main: #f4f5f6;
+  --hermes-text-muted: #8e9399;
+  --hermes-border: #282b30;
+  --hermes-radius: 4px;
+  --hermes-touch-feedback: rgba(197, 168, 128, 0.15);
+}
+
+html[data-theme="bar"] {
+  --hermes-bg-app: #050508;
+  --hermes-bg-surface: #0f111a;
+  --hermes-accent: #00f0ff;
+  --hermes-accent-hover: #70f8ff;
+  --hermes-text-main: #ffffff;
+  --hermes-text-muted: #6b7280;
+  --hermes-border: #1e2235;
+  --hermes-radius: 12px;
+  --hermes-touch-feedback: rgba(0, 240, 255, 0.2);
+}
+
+html[data-theme="buffet"] {
+  --hermes-bg-app: #f4f7f5;
+  --hermes-bg-surface: #ffffff;
+  --hermes-accent: #10b981;
+  --hermes-accent-hover: #059669;
+  --hermes-text-main: #0f172a;
+  --hermes-text-muted: #64748b;
+  --hermes-border: #e2e8f0;
+  --hermes-radius: 16px;
+  --hermes-touch-feedback: rgba(16, 185, 129, 0.1);
+}
+
+html[data-theme="qsr"] {
+  --hermes-bg-app: #ffffff;
+  --hermes-bg-surface: #f8fafc;
+  --hermes-accent: #ef4444;
+  --hermes-accent-hover: #dc2626;
+  --hermes-text-main: #0f172a;
+  --hermes-text-muted: #475569;
+  --hermes-border: #cbd5e1;
+  --hermes-radius: 8px;
+  --hermes-touch-feedback: rgba(239, 68, 68, 0.2);
+}
+
+html[data-theme="convenience"] {
+  --hermes-bg-app: #f1f5f9;
+  --hermes-bg-surface: #ffffff;
+  --hermes-accent: #2563eb;
+  --hermes-accent-hover: #1d4ed8;
+  --hermes-text-main: #1e293b;
+  --hermes-text-muted: #64748b;
+  --hermes-border: #e2e8f0;
+  --hermes-radius: 6px;
+  --hermes-touch-feedback: rgba(37, 99, 235, 0.1);
 }
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 body {
+  font-family: system-ui, "Segoe UI", sans-serif;
+  background: var(--hermes-bg-app);
+  color: var(--hermes-text-main);
+}
+html[data-theme="restaurant"] body {
   font-family: Georgia, "Times New Roman", serif;
-  background: var(--paper);
-  color: var(--ink);
 }
 
 .shell { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
@@ -21,66 +77,82 @@ h2 { font-size: 16px; margin: 0 0 12px; }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .rowbtn, .primary {
   font: inherit; cursor: pointer; text-align: left;
-  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--hermes-bg-surface); color: var(--hermes-text-main);
+  border: 1px solid var(--hermes-border); border-radius: var(--hermes-radius);
   padding: 10px 12px; display: flex; justify-content: space-between; gap: 8px; width: 100%;
 }
+.rowbtn:hover { background: var(--hermes-touch-feedback); }
 .rowbtn:disabled { opacity: 0.45; cursor: not-allowed; }
-.primary { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; justify-content: center; margin-top: 12px; }
-.muted { color: var(--muted); font-size: 13px; }
-.kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--muted); }
+.primary {
+  background: var(--hermes-accent); color: var(--hermes-bg-app);
+  border-color: var(--hermes-accent); justify-content: center; margin-top: 12px;
+}
+.primary:hover { background: var(--hermes-accent-hover); border-color: var(--hermes-accent-hover); }
+.muted { color: var(--hermes-text-muted); font-size: 13px; }
+.kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--hermes-text-muted); }
 h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
-.tag { margin: 8px 0 28px; color: var(--muted); font-style: italic; }
+.tag { margin: 8px 0 28px; color: var(--hermes-text-muted); font-style: italic; }
 .card {
-  background: #fffbf4;
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: var(--hermes-bg-surface);
+  border: 1px solid var(--hermes-border);
+  border-radius: var(--hermes-radius);
   padding: 20px 22px;
 }
-.row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.row { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--hermes-border); }
 .row:last-child { border-bottom: 0; }
 .row.pick {
   font: inherit; width: 100%; text-align: left; cursor: pointer;
-  background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  background: transparent; border: 0; border-bottom: 1px solid var(--hermes-border); border-radius: 0;
   color: inherit;
 }
-.row.picked { background: #f0e6d2; }
+.row.picked { background: var(--hermes-touch-feedback); }
 .zones { display: flex; flex-direction: column; gap: 14px; }
 .zone-label {
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--muted); margin-bottom: 8px;
+  color: var(--hermes-text-muted); margin-bottom: 8px;
 }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .tile {
-  aspect-ratio: 1; border: 1px solid var(--line); border-radius: 10px;
-  background: #fff; cursor: pointer; font: inherit;
+  aspect-ratio: 1; border: 1px solid var(--hermes-border); border-radius: var(--hermes-radius);
+  background: var(--hermes-bg-surface); color: var(--hermes-text-main); cursor: pointer; font: inherit;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; padding: 8px;
 }
-.tile.busy { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; }
-.tile.current { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tile:hover { background: var(--hermes-touch-feedback); }
+.tile.busy { background: var(--hermes-accent); color: var(--hermes-bg-app); border-color: var(--hermes-accent); }
+.tile.current { outline: 2px solid var(--hermes-accent); outline-offset: 2px; }
 .tile .meta { font-size: 11px; opacity: 0.85; }
-.label { color: var(--muted); }
+.label { color: var(--hermes-text-muted); }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .pill {
-  border: 1px solid var(--gold);
-  color: #6b1c1c;
+  border: 1px solid var(--hermes-accent);
+  color: var(--hermes-accent);
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 13px;
 }
-.err { color: #8a2a2a; }
-.summary { margin: 14px 0 4px; color: var(--muted); font-size: 14px; line-height: 1.45; }
-.foot { margin-top: 28px; font-size: 13px; color: var(--muted); }
+.err { color: #e11d48; }
+.summary { margin: 14px 0 4px; color: var(--hermes-text-muted); font-size: 14px; line-height: 1.45; }
+.foot { margin-top: 28px; font-size: 13px; color: var(--hermes-text-muted); }
 
-.tabs { display: flex; gap: 8px; margin: 8px 0 16px; }
-.tab { font: inherit; cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; }
-.tab.on { background: #6b1c1c; color: #f6f1e8; border-color: #6b1c1c; }
-.ticket { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; background: #fff; }
-.ticket.prep { border-color: #c4a35a; }
+.tabs { display: flex; gap: 8px; margin: 8px 0 16px; flex-wrap: wrap; }
+.tab {
+  font: inherit; cursor: pointer;
+  border: 1px solid var(--hermes-border); background: var(--hermes-bg-surface);
+  color: var(--hermes-text-main); border-radius: 999px; padding: 6px 14px;
+}
+.tab.on { background: var(--hermes-accent); color: var(--hermes-bg-app); border-color: var(--hermes-accent); }
+.ticket {
+  border: 1px solid var(--hermes-border); border-radius: var(--hermes-radius);
+  padding: 10px 12px; margin-top: 8px; background: var(--hermes-bg-app);
+}
+.ticket.prep { border-color: var(--hermes-accent); }
 .ticket header { display: flex; justify-content: space-between; gap: 8px; }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
 .actions .rowbtn, .actions .primary { width: auto; flex: 1; margin-top: 0; }
 .field {
   font: inherit; width: 100%; margin: 8px 0; padding: 8px 10px;
-  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  border: 1px solid var(--hermes-border); border-radius: var(--hermes-radius);
+  background: var(--hermes-bg-app); color: var(--hermes-text-main);
 }
+select.field { color: var(--hermes-text-main); }

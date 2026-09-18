@@ -20,18 +20,14 @@ Si abres este proyecto en VS Code u otro IDE, **lee este archivo y `docs/CONTEXT
 
 ## Estado al cerrar el hilo original
 
-Implementado hasta mapa de mesas y mover/juntar ítems:
+Implementado hasta nomenclatura de UI y tema por perfil:
 
 - Perfiles + módulos + mecanismos
-- Esquema Postgres, seed de local demo
-- Flujo de orden, KDS, entregar, cerrar pista
-- Caja de turno, propina, partir monto
-- Roles y PIN
-- Modificadores
-- Kiosco de autoservicio
-- Mapa de mesas (restaurant/bar) + `move` / `merge`
+- Flujo de orden, KDS, caja, kiosco, mapa + move/merge
+- UI: Iniciar sesión, Artículo, Ticket, Recibo, Turno, Empleado, Tienda
+- Tema CSS por defecto del perfil (`docs/TEMAS.md`)
 
-Siguiente paso: recorrer Piso con el mesero. No inventario ni factura fiscal.
+Siguiente paso: pantalla Ventas ticket | artículos | cobrar. No inventario ni factura fiscal.
 
 ## Arranque
 
@@ -56,5 +52,7 @@ PIN demo: `0000` dueño · `1111` mesero · `2222` cocina · `3333` caja · `444
 | `docs/USUARIOS.md` | Roles |
 | `docs/MODIFICADORES.md` | Extras del ítem |
 | `docs/KIOSCO.md` | Autoservicio |
+| `docs/GUIA_PRODUCTO.md` | Nombres de UI y orden de construcción |
+| `docs/TEMAS.md` | Temas CSS por perfil |
 | `backend/app/` | API |
 | `frontend/src/App.jsx` | Hub (piso, KDS, caja, kiosco) |

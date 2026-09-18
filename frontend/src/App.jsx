@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 
+const THEME_BY_PROFILE = {
+  restaurant: "restaurant",
+  bar: "bar",
+  buffet: "buffet",
+  qsr: "qsr",
+  convenience: "convenience",
+};
+
+function applyTheme(profile) {
+  const key = (profile || "restaurant").toLowerCase();
+  document.documentElement.dataset.theme = THEME_BY_PROFILE[key] || "restaurant";
+}
+
 async function api(path, opts = {}) {
   const token = localStorage.getItem("hermes_token");
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
@@ -23,9 +36,21 @@ export default function App() {
       return null;
     }
   });
+  const [instance, setInstance] = useState(null);
   const [view, setView] = useState("piso");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        setInstance(inst);
+        applyTheme(inst.profile);
+      })
+      .catch(() => applyTheme("restaurant"));
+  }, []);
+
+  const storeName = instance?.venue?.name || instance?.name || "Hermes OS";
 
   const caps = user?.caps || [];
   const canFloor = caps.includes("floor") || caps.includes("admin");
@@ -68,13 +93,13 @@ export default function App() {
   if (!user) {
     return (
       <main className="shell">
-        <div className="kicker">Hermes OS</div>
-        <h1>Entrar</h1>
+        <div className="kicker">{storeName}</div>
+        <h1>Iniciar sesión</h1>
         <p className="tag">PIN demo: 0000 dueño · 1111 mesero · 2222 cocina · 3333 caja · 4444 kiosco</p>
         {error && <p className="err">{error}</p>}
         <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
         <button className="primary" onClick={enter}>
-          Entrar
+          Iniciar sesión
         </button>
       </main>
     );
@@ -82,7 +107,9 @@ export default function App() {
 
   return (
     <main className="shell wide">
-      <div className="kicker">Hermes OS · {user.name} · {user.role}</div>
+      <div className="kicker">
+        Tienda {storeName} · Empleado {user.name}
+      </div>
       <h1>Hermes OS</h1>
       <div className="tabs">
         {canFloor && (
@@ -97,7 +124,7 @@ export default function App() {
         )}
         {canCash && (
           <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
-            Caja
+            Turno
           </button>
         )}
         {canKiosk && (
@@ -254,7 +281,7 @@ function FloorView() {
           )}
         </section>
         <section className="card">
-          <h2>Carta</h2>
+          <h2>Artículos</h2>
           <div className="list">
             {products.map((p) => (
               <button
@@ -324,8 +351,8 @@ function FloorView() {
           )}
         </section>
         <section className="card">
-          <h2>{current ? current.space?.name || `Orden #${current.id}` : "Orden"}</h2>
-          {!current && <p className="muted">Abre una unidad para empezar.</p>}
+          <h2>{current ? current.space?.name || `Ticket #${current.id}` : "Ticket"}</h2>
+          {!current && <p className="muted">Abre un ticket para empezar.</p>}
           {current && (
             <>
               <p className="muted">
@@ -462,8 +489,8 @@ function FloorView() {
         </section>
       </div>
       <section className="card" style={{ marginTop: 18 }}>
-        <h2>Abiertas ahora</h2>
-        {orders.length === 0 && <p className="muted">Nadie en pista.</p>}
+        <h2>Tickets abiertos</h2>
+        {orders.length === 0 && <p className="muted">No hay tickets abiertos.</p>}
         {orders.map((o) => (
           <button key={o.id} className="rowbtn" onClick={() => setCurrent(o)}>
             <strong>
@@ -594,7 +621,7 @@ function CashView() {
 
   return (
     <>
-      <p className="tag">Turno de caja. Ticket interno, no factura fiscal.</p>
+      <p className="tag">Turno. El recibo es interno, no factura fiscal.</p>
       {error && <p className="err">{error}</p>}
       {!shift && (
         <section className="card">
@@ -612,7 +639,7 @@ function CashView() {
               })
             }
           >
-            Abrir caja
+            Abrir turno
           </button>
         </section>
       )}
@@ -642,7 +669,7 @@ function CashView() {
             </p>
           </section>
           <section className="card" style={{ marginTop: 18 }}>
-            <h2>Cobrar órdenes abiertas</h2>
+            <h2>Cobrar tickets abiertos</h2>
             <p className="muted">Propina que se suma al cobrar</p>
             <div className="actions">
               {[0, 10, 15].map((n) => (
@@ -655,7 +682,7 @@ function CashView() {
                 </button>
               ))}
             </div>
-            {orders.length === 0 && <p className="muted">No hay cuentas en pista.</p>}
+            {orders.length === 0 && <p className="muted">No hay tickets abiertos.</p>}
             {orders.map((o) => {
               const due = o.due_cents ?? o.precuenta.subtotal_cents;
               const typed = payAmt[o.id];
@@ -742,7 +769,7 @@ function CashView() {
                 })
               }
             >
-              Cerrar caja
+              Cerrar turno
             </button>
           </section>
         </>
