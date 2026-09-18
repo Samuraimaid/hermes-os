@@ -70,6 +70,10 @@ class DiningIn(BaseModel):
     dining_option: str
 
 
+class GuestNameIn(BaseModel):
+    name: str | None = None
+
+
 class TaxIn(BaseModel):
     enabled: bool = False
     bps: int = 1500
@@ -345,6 +349,12 @@ def set_discount(order_id: int, body: DiscountIn):
 def set_dining(order_id: int, body: DiningIn):
     _need_seed()
     return _ok(order_svc.set_dining_option, order_id, body.dining_option)
+
+
+@app.post("/api/orders/{order_id}/name")
+def set_guest_name(order_id: int, body: GuestNameIn):
+    _need_seed()
+    return _ok(order_svc.set_guest_name, order_id, body.name)
 
 
 @app.post("/api/venue/tax")

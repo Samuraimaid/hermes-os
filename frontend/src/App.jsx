@@ -305,7 +305,10 @@ function CdsView() {
       )}
       {ready && ticket && (
         <>
-          <h1>{ticket.space?.name || `Ticket #${ticket.id}`}</h1>
+          <h1>
+            {ticket.space?.name || `Ticket #${ticket.id}`}
+            {ticket.guest_name ? ` · ${ticket.guest_name}` : ""}
+          </h1>
           {ticket.dining_label && <p className="tag">{ticket.dining_label}</p>}
           <div className="cds-lines">
             {live.length === 0 && <p className="muted">Preparando tu ticket…</p>}
@@ -1059,7 +1062,9 @@ function FloorView({ canCash }) {
                       >
                         <strong>{s.name}</strong>
                         <span className="meta">
-                          {occ ? `${occ.precuenta.item_count}` : "libre"}
+                          {occ
+                            ? occ.guest_name || `${occ.precuenta.item_count}`
+                            : "libre"}
                         </span>
                       </button>
                     );
@@ -1085,7 +1090,11 @@ function FloorView({ canCash }) {
       </section>
       <div className="pos">
         <section className="card pos-ticket">
-          <h2>{current ? current.space?.name || `Ticket #${current.id}` : "Ticket"}</h2>
+          <h2>
+            {current
+              ? `${current.space?.name || `Ticket #${current.id}`}${current.guest_name ? ` · ${current.guest_name}` : ""}`
+              : "Ticket"}
+          </h2>
           {!current && <p className="muted">Toca una mesa para abrir un ticket.</p>}
           {current && (
             <>
@@ -1094,6 +1103,23 @@ function FloorView({ canCash }) {
                 {current.dining_label ? ` · ${current.dining_label}` : ""}
                 {current.queue_number ? ` · turno ${current.queue_number}` : ""}
               </p>
+              <p className="muted">Nombre</p>
+              <input
+                className="field"
+                defaultValue={current.guest_name || ""}
+                key={`guest-${current.id}-${current.guest_name || ""}`}
+                placeholder="Juan, Mesa 1-A"
+                onBlur={(e) => {
+                  const next = e.target.value.trim();
+                  if (next === (current.guest_name || "")) return;
+                  run(async () =>
+                    api(`/api/orders/${current.id}/name`, {
+                      method: "POST",
+                      body: JSON.stringify({ name: next }),
+                    })
+                  );
+                }}
+              />
               <div className="actions" style={{ marginBottom: 8 }}>
                 {DINING_OPTS.map((d) => (
                   <button
@@ -1603,6 +1629,7 @@ function KdsView({ onAuthFail }) {
                   </strong>
                   <span>
                     {t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}
+                    {t.guest_name ? ` · ${t.guest_name}` : ""}
                     {t.dining_label ? ` · ${t.dining_label}` : ""}
                     {t.sent_at ? ` · ${waitLabel(t.sent_at)}` : ""}
                   </span>

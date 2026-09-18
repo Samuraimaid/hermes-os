@@ -68,6 +68,7 @@ Orden de commits (rama `main`):
 25. Configuración admin: moneda + IVA (`/config`)
 26. Tipo de pedido en Ticket de piso (CDS/KDS)
 27. Artículos admin: alta, precio, disponible, SKU opcional
+28. Nombre opcional en ticket abierto (franja, CDS, KDS)
 
 ### API útil
 
