@@ -18,8 +18,12 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 5. `POST /api/items/{id}/bump` `{ action: prep | ready | served }`
 6. `POST /api/orders/{id}/deliver` — todo listo; sale a sala. Falla si cocina sigue con cola.
 7. `POST /api/orders/{id}/close` — sale de la pista. **No cobra.** Solo si está lista o entregada.
+8. `POST /api/items/{id}/move` `{ to_space_id }` — el renglón cambia de cuenta. Si el destino no tiene orden abierta, se crea. Conserva status y `sent_at`; cocina no recibe un ticket nuevo.
+9. `POST /api/orders/{id}/merge` `{ onto_order_id }` — todos los ítems vivos pasan a la otra cuenta.
 
-`GET /api/orders/{id}` no hace falta: el cuerpo de cada POST ya trae la orden y su **precuenta**.
+Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status de ambas; si el origen queda vacío, se cierra (libera la mesa). Solo entre espacios `table` o `tab`. Cap `floor`.
+
+`GET /api/orders/{id}` no hace falta: el cuerpo de cada POST ya trae la orden y su **precuenta**. Move y merge devuelven `{ source, destination }`.
 
 ## Dining option
 
@@ -32,3 +36,5 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 
 En el hub, pestaña **Estaciones**. El cocinero pasa `queued → prep → ready`.
 La vista se refresca cada 4 segundos. No hace falta WebSocket todavía.
+
+En **Piso**, restaurante y bar ven un mapa por zona. El mesero abre una mesa, mueve renglones o junta cuentas. Los otros rubros siguen con la lista de unidades.

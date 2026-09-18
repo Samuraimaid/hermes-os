@@ -53,6 +53,8 @@ Orden de commits (rama `main`):
 10. `f11c12a` Roles y PIN
 11. `b2faed0` Modificadores
 12. `53367dd` Kiosco de autoservicio
+13. `6933d2f` Seed del kiosco: capacity como NULL
+14. Mapa de mesas + mover/juntar ítems entre cuentas
 
 ### API útil
 
@@ -60,6 +62,7 @@ Orden de commits (rama `main`):
 - `GET /api/instance` `GET /api/spaces` `GET /api/products` `GET /api/orders`
 - `POST /api/orders` `POST /api/orders/{id}/items` (`modifier_ids`)
 - `POST /api/orders/{id}/send` `/deliver` `/close` `/pay`
+- `POST /api/items/{id}/move` `{ to_space_id }` · `POST /api/orders/{id}/merge` `{ onto_order_id }`
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
 
@@ -72,9 +75,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Qué no está
 
-- Docker no se llegó a levantar en el entorno del chat original (no había motor Docker ahí)
 - WebSocket (KDS hace poll 4 s)
-- Mapa visual de mesas ni mover/juntar ítems entre cuentas
 - Inventario / recetas
 - Conector fiscal
 - Offline real del modo híbrido (hoy es bandera + docs)
@@ -84,9 +85,8 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Siguiente paso acordado
 
-1. En la máquina del usuario: `docker compose up --build` y recorrer un pedido con cada rol.
-2. Si eso corre y no hay cliente concreto: mapa de mesas y mover ítems (estilo ticket abierto de Loyverse).
-3. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
+1. Recorrer Piso con PIN `1111`: mapa, mover un renglón, juntar dos mesas.
+2. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
 
 ## Cómo pedirle a Grok en VS Code
 
