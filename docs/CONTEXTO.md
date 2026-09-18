@@ -66,12 +66,13 @@ Orden de commits (rama `main`):
 23. Reembolso de recibo (no toca el ticket)
 24. Tipografía TPV: Roboto 400/500/700, dinero tabular-nums
 25. Configuración admin: moneda + IVA (`/config`)
+26. Tipo de pedido en Ticket de piso (CDS/KDS)
 
 ### API útil
 
 - `POST /api/login` `{ pin }`
 - `GET /api/instance` `GET /api/spaces` `GET /api/products` `GET /api/orders`
-- `POST /api/orders` `POST /api/orders/{id}/items` (`modifier_ids`)
+- `POST /api/orders` `POST /api/orders/{id}/items` (`modifier_ids`) · `POST /api/orders/{id}/dining`
 - `POST /api/orders/{id}/send` `/deliver` `/close` `/pay`
 - `POST /api/items/{id}/move` `{ to_space_id }` · `POST /api/orders/{id}/merge` `{ onto_order_id }`
 - `POST /api/items/{id}/void`

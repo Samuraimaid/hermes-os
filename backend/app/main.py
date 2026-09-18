@@ -65,6 +65,10 @@ class DiscountIn(BaseModel):
     value: int = 0
 
 
+class DiningIn(BaseModel):
+    dining_option: str
+
+
 class TaxIn(BaseModel):
     enabled: bool = False
     bps: int = 1500
@@ -300,6 +304,12 @@ def merge_order(order_id: int, body: MergeOrderIn):
 def set_discount(order_id: int, body: DiscountIn):
     _need_seed()
     return _ok(order_svc.set_discount, order_id, body.type, body.value)
+
+
+@app.post("/api/orders/{order_id}/dining")
+def set_dining(order_id: int, body: DiningIn):
+    _need_seed()
+    return _ok(order_svc.set_dining_option, order_id, body.dining_option)
 
 
 @app.post("/api/venue/tax")

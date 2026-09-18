@@ -17,6 +17,20 @@ ORIGIN_BY_SPACE = {
     "kiosk": "kiosko",
 }
 
+DINING_OPTIONS = ("dine_in", "takeout", "delivery")
+DINING_LABELS = {
+    "dine_in": "Comer aquí",
+    "takeout": "Para llevar",
+    "delivery": "Delivery",
+}
+
+
+def _dining(option: str | None) -> str:
+    opt = (option or "").strip().lower()
+    if opt not in DINING_OPTIONS:
+        raise ValueError("Tipo de pedido no válido")
+    return opt
+
 
 def _profile() -> str:
     p = settings.hermes_profile.strip().lower()
@@ -92,6 +106,7 @@ def order_out(bundle: dict) -> dict:
         "status": order["status"],
         "origin": order["origin"],
         "dining_option": order.get("dining_option"),
+        "dining_label": DINING_LABELS.get(order.get("dining_option") or ""),
         "cover_count": order.get("cover_count"),
         "queue_number": order.get("queue_number"),
         "notes": order.get("notes"),
@@ -197,15 +212,21 @@ def open_order(space_id: int, cover_count: int | None = None, dining_option: str
         if existing:
             bundle = _load_order(existing["id"])
             assert bundle
-            if bundle["order"].get("tax_enabled") is None and not _has_payments(existing["id"]):
-                db.execute(
-                    "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
-                    (
-                        bool(venue.get("tax_enabled")),
-                        int(venue.get("tax_bps") or 0),
-                        existing["id"],
-                    ),
-                )
+            if not _has_payments(existing["id"]):
+                if dining_option:
+                    db.execute(
+                        "UPDATE orders SET dining_option = %s WHERE id = %s",
+                        (_dining(dining_option), existing["id"]),
+                    )
+                if bundle["order"].get("tax_enabled") is None:
+                    db.execute(
+                        "UPDATE orders SET tax_enabled = %s, tax_bps = %s WHERE id = %s",
+                        (
+                            bool(venue.get("tax_enabled")),
+                            int(venue.get("tax_bps") or 0),
+                            existing["id"],
+                        ),
+                    )
                 bundle = _load_order(existing["id"])
                 assert bundle
             return order_out(bundle)
@@ -508,7 +529,7 @@ def station_tickets(station_key: str) -> list[dict]:
     rows = db.fetch_all(
         """
         SELECT i.id, i.name_snapshot, i.qty, i.status, i.notes, i.sent_at,
-               o.id AS order_id, o.queue_number, o.origin,
+               o.id AS order_id, o.queue_number, o.origin, o.dining_option,
                sp.name AS space_name, s.key AS station_key, s.name AS station_name
         FROM order_items i
         JOIN orders o ON o.id = i.order_id
@@ -532,6 +553,8 @@ def station_tickets(station_key: str) -> list[dict]:
             "notes": r["notes"],
             "queue_number": r["queue_number"],
             "space": r["space_name"],
+            "dining_option": r.get("dining_option"),
+            "dining_label": DINING_LABELS.get(r.get("dining_option") or ""),
             "station": r["station_key"],
             "sent_at": r["sent_at"].isoformat() if r.get("sent_at") else None,
             "modifiers": _item_mods(r["id"]),
@@ -682,6 +705,23 @@ def merge_order(order_id: int, onto_order_id: int) -> dict:
     _close_if_empty(order_id)
     _refresh_order_status(onto_order_id)
     return _pair_out(order_id, onto_order_id)
+
+
+def set_dining_option(order_id: int, dining_option: str) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    if bundle["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La orden está cerrada")
+    if _has_payments(order_id):
+        raise ValueError("Hay pagos en la cuenta")
+    db.execute(
+        "UPDATE orders SET dining_option = %s WHERE id = %s",
+        (_dining(dining_option), order_id),
+    )
+    loaded = _load_order(order_id)
+    assert loaded
+    return order_out(loaded)
 
 
 def set_discount(order_id: int, discount_type: str | None, value: int = 0) -> dict:

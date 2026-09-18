@@ -293,6 +293,7 @@ function CdsView() {
       {ready && ticket && (
         <>
           <h1>{ticket.space?.name || `Ticket #${ticket.id}`}</h1>
+          {ticket.dining_label && <p className="tag">{ticket.dining_label}</p>}
           <div className="cds-lines">
             {live.length === 0 && <p className="muted">Preparando tu ticket…</p>}
             {live.map((i) => (
@@ -334,6 +335,11 @@ function CdsView() {
 }
 
 const PAY_LABEL = { cash: "Efectivo", card: "Tarjeta", transfer: "Transfer", other: "Otro" };
+const DINING_OPTS = [
+  { id: "dine_in", label: "Comer aquí" },
+  { id: "takeout", label: "Para llevar" },
+  { id: "delivery", label: "Delivery" },
+];
 
 function ConfigScreen() {
   const [user, setUser] = useState(() => {
@@ -684,6 +690,7 @@ function FloorView({ canCash }) {
   const [selected, setSelected] = useState([]);
   const [destId, setDestId] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
+  const [dining, setDining] = useState("dine_in");
   const [discKind, setDiscKind] = useState("percent");
   const [discVal, setDiscVal] = useState("");
   const [error, setError] = useState("");
@@ -721,6 +728,10 @@ function FloorView({ canCash }) {
       setDiscVal(d?.type === "percent" && d.value ? String(d.value) : "");
     }
   }, [current?.id, current?.discount?.type, current?.discount?.value]);
+
+  useEffect(() => {
+    if (current?.dining_option) setDining(current.dining_option);
+  }, [current?.id, current?.dining_option]);
 
   async function run(fn) {
     try {
@@ -768,7 +779,7 @@ function FloorView({ canCash }) {
   async function openSpace(spaceId) {
     const order = await api("/api/orders", {
       method: "POST",
-      body: JSON.stringify({ space_id: spaceId, cover_count: 2 }),
+      body: JSON.stringify({ space_id: spaceId, cover_count: 2, dining_option: dining }),
     });
     setSelected([]);
     return order;
@@ -845,8 +856,29 @@ function FloorView({ canCash }) {
             <>
               <p className="muted">
                 {current.status} · {current.origin}
+                {current.dining_label ? ` · ${current.dining_label}` : ""}
                 {current.queue_number ? ` · turno ${current.queue_number}` : ""}
               </p>
+              <div className="actions" style={{ marginBottom: 8 }}>
+                {DINING_OPTS.map((d) => (
+                  <button
+                    key={d.id}
+                    className={dining === d.id ? "tab on" : "tab"}
+                    disabled={lockedPay}
+                    onClick={() =>
+                      run(async () => {
+                        setDining(d.id);
+                        return api(`/api/orders/${current.id}/dining`, {
+                          method: "POST",
+                          body: JSON.stringify({ dining_option: d.id }),
+                        });
+                      })
+                    }
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
               <div className="list">
                 {current.items.map((i) => (
                   <div
@@ -1333,6 +1365,7 @@ function KdsView({ onAuthFail }) {
                   </strong>
                   <span>
                     {t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}
+                    {t.dining_label ? ` · ${t.dining_label}` : ""}
                     {t.sent_at ? ` · ${waitLabel(t.sent_at)}` : ""}
                   </span>
                 </header>
@@ -1648,6 +1681,9 @@ function KioskView() {
         </button>
         <button className={option === "takeout" ? "tab on" : "tab"} onClick={() => setOption("takeout")}>
           Para llevar
+        </button>
+        <button className={option === "delivery" ? "tab on" : "tab"} onClick={() => setOption("delivery")}>
+          Delivery
         </button>
       </div>
       <div className="grid">

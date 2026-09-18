@@ -36,7 +36,8 @@ Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status 
 
 ## Dining option
 
-`dine_in` | `takeout` | `delivery`. No cambia las tablas; cambia la etiqueta del ticket.
+`dine_in` | `takeout` | `delivery` — en UI: Comer aquí | Para llevar | Delivery.
+Se elige al abrir mesa (`POST /api/orders`) o `POST /api/orders/{id}/dining` si no hay pagos. Cap `floor`. CDS y KDS muestran `dining_label`. Sin costo extra.
 
 
 ## Pantalla de estaciones
