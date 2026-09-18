@@ -712,6 +712,9 @@ function CatalogView() {
   const [category, setCategory] = useState("Bebidas");
   const [stationId, setStationId] = useState("");
   const [sku, setSku] = useState("");
+  const [trackStock, setTrackStock] = useState(false);
+  const [stockQuantity, setStockQuantity] = useState("0");
+  const [lowStockThreshold, setLowStockThreshold] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -741,11 +744,17 @@ function CatalogView() {
           category: category || null,
           destination_station_id: stationId ? Number(stationId) : null,
           sku: sku || null,
+          track_stock: trackStock,
+          stock_quantity: trackStock ? parseFloat(stockQuantity) || 0 : 0,
+          low_stock_threshold: trackStock && lowStockThreshold.trim() !== "" ? parseFloat(lowStockThreshold) : null,
         }),
       });
       setName("");
       setPrice("");
       setSku("");
+      setTrackStock(false);
+      setStockQuantity("0");
+      setLowStockThreshold("");
       await load();
     } catch (e) {
       setError(e.message);
@@ -759,6 +768,39 @@ function CatalogView() {
         method: "PATCH",
         body: JSON.stringify(body),
       });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  const [newModForProduct, setNewModForProduct] = useState(null);
+  const [newModName, setNewModName] = useState("");
+  const [newModPrice, setNewModPrice] = useState("");
+
+  async function addModifier(productId) {
+    if (!newModName.trim()) return;
+    try {
+      setError("");
+      const cents = Math.round(Number(newModPrice || 0) * 100);
+      await api(`/api/products/${productId}/modifiers`, {
+        method: "POST",
+        body: JSON.stringify({ name: newModName.trim(), price_delta_cents: cents }),
+      });
+      setNewModForProduct(null);
+      setNewModName("");
+      setNewModPrice("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function deleteModifier(modId) {
+    if (!window.confirm("¿Deseas eliminar esta opción del modificador?")) return;
+    try {
+      setError("");
+      await api(`/api/modifiers/${modId}`, { method: "DELETE" });
       await load();
     } catch (e) {
       setError(e.message);
@@ -787,57 +829,231 @@ function CatalogView() {
             </option>
           ))}
         </select>
+        <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={trackStock}
+              onChange={(e) => setTrackStock(e.target.checked)}
+            />
+            <span style={{ fontWeight: 500 }}>Hacer seguimiento de inventario</span>
+          </label>
+          {trackStock && (
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+              <div>
+                <p className="muted" style={{ margin: "0 0 4px 0", fontSize: 13 }}>En existencia</p>
+                <input
+                  type="number"
+                  step="any"
+                  className="field"
+                  style={{ width: 110, margin: 0 }}
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <p className="muted" style={{ margin: "0 0 4px 0", fontSize: 13 }}>Alerta stock bajo</p>
+                <input
+                  type="number"
+                  step="any"
+                  className="field"
+                  style={{ width: 110, margin: 0 }}
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                  placeholder="Ej. 5"
+                />
+              </div>
+            </div>
+          )}
+        </div>
         <button className="primary" onClick={create} disabled={!name || !price}>
-          Crear
+          Crear artículo
         </button>
       </section>
       <section className="card" style={{ marginTop: 18 }}>
-        <h2>Carta</h2>
+        <h2>Artículos y Modificadores</h2>
         {items.map((p) => (
-          <div className="row" key={p.id}>
-            <span>
-              {p.name}
-              <span className="muted">
-                {p.sku ? ` · ${p.sku}` : ""}
-                {" · "}
-                {p.category || "—"}
-                {p.available ? "" : " · no disponible"}
-              </span>
-              <input
-                className="field"
-                style={{ width: 110, display: "block", marginTop: 4 }}
-                defaultValue={p.sku || ""}
-                key={`${p.id}-sku-${p.sku || ""}`}
-                placeholder="SKU"
-                onBlur={(e) => {
-                  const next = e.target.value.trim();
-                  if (next !== (p.sku || "")) patch(p.id, { sku: next });
-                }}
-              />
-            </span>
-            <span>
-              <input
-                className="field"
-                style={{ width: 110, display: "inline-block", margin: "0 8px 0 0" }}
-                defaultValue={amountText(p.price_cents)}
-                key={`${p.id}-${p.price_cents}`}
-                onBlur={(e) => {
-                  const cents = Math.round(Number(e.target.value) * 100);
-                  if (Number.isFinite(cents) && cents !== p.price_cents) {
-                    patch(p.id, { price_cents: cents });
-                  }
-                }}
-              />
-              <span className="amt">{money(p.price_cents)}</span>
-              <label className="muted" style={{ marginLeft: 8 }}>
+          <div className="card" key={p.id} style={{ marginBottom: 14, padding: 14, background: "var(--hermes-bg-app)" }}>
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ flex: "1 1 240px" }}>
+                <input
+                  className="field"
+                  style={{ fontWeight: 600, fontSize: 16, marginBottom: 4, width: "100%", maxWidth: 300 }}
+                  defaultValue={p.name}
+                  key={`${p.id}-name-${p.name}`}
+                  placeholder="Nombre del artículo"
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next && next !== p.name) patch(p.id, { name: next });
+                  }}
+                />
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    className="field"
+                    style={{ width: 120, margin: 0 }}
+                    defaultValue={p.sku || ""}
+                    key={`${p.id}-sku-${p.sku || ""}`}
+                    placeholder="SKU"
+                    onBlur={(e) => {
+                      const next = e.target.value.trim();
+                      if (next !== (p.sku || "")) patch(p.id, { sku: next });
+                    }}
+                  />
+                  <input
+                    className="field"
+                    style={{ width: 140, margin: 0 }}
+                    defaultValue={p.category || ""}
+                    key={`${p.id}-cat-${p.category || ""}`}
+                    placeholder="Categoría"
+                    onBlur={(e) => {
+                      const next = e.target.value.trim();
+                      if (next !== (p.category || "")) patch(p.id, { category: next });
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flex: "0 0 auto" }}>
+                <input
+                  className="field"
+                  style={{ width: 95, display: "inline-block", margin: "0 8px 0 0" }}
+                  defaultValue={amountText(p.price_cents)}
+                  key={`${p.id}-${p.price_cents}`}
+                  onBlur={(e) => {
+                    const cents = Math.round(Number(e.target.value) * 100);
+                    if (Number.isFinite(cents) && cents !== p.price_cents) {
+                      patch(p.id, { price_cents: cents });
+                    }
+                  }}
+                />
+                <span className="amt">{money(p.price_cents)}</span>
+                <label className="muted" style={{ marginLeft: 10, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <input
+                    type="checkbox"
+                    checked={p.available}
+                    onChange={(e) => patch(p.id, { available: e.target.checked })}
+                  />{" "}
+                  Disponible
+                </label>
+              </div>
+            </div>
+
+            {/* Opciones de modificadores */}
+            <div className="product-modifiers">
+              <span className="muted" style={{ fontSize: 13, marginRight: 4 }}>Modificadores:</span>
+              {(p.modifiers || []).map((m) => (
+                <span className="mod-pill" key={m.id}>
+                  <strong>{m.name}</strong>
+                  {m.price_delta_cents ? ` (+${money(m.price_delta_cents)})` : ""}
+                  <button
+                    className="btn-del-mod"
+                    title="Eliminar opción"
+                    onClick={() => deleteModifier(m.id)}
+                  >×</button>
+                </span>
+              ))}
+              {newModForProduct === p.id ? (
+                <div className="mod-add-inline">
+                  <input
+                    className="field"
+                    placeholder="Nombre (ej. Queso extra)"
+                    value={newModName}
+                    onChange={(e) => setNewModName(e.target.value)}
+                    autoFocus
+                  />
+                  <input
+                    className="field"
+                    placeholder="Extra (+C$)"
+                    style={{ width: 90 }}
+                    value={newModPrice}
+                    onChange={(e) => setNewModPrice(e.target.value)}
+                  />
+                  <button className="primary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => addModifier(p.id)}>
+                    Guardar
+                  </button>
+                  <button className="tab" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => { setNewModForProduct(null); setNewModName(""); setNewModPrice(""); }}>
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="tab"
+                  style={{ fontSize: 12, padding: "2px 10px" }}
+                  onClick={() => {
+                    setNewModForProduct(p.id);
+                    setNewModName("");
+                    setNewModPrice("");
+                  }}
+                >
+                  + Añadir modificador
+                </button>
+              )}
+            </div>
+
+            {/* Control de inventario (Loyverse Cap. 4) */}
+            <div className="stock-control-panel">
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
                 <input
                   type="checkbox"
-                  checked={p.available}
-                  onChange={(e) => patch(p.id, { available: e.target.checked })}
-                />{" "}
-                Disponible
+                  checked={!!p.track_stock}
+                  onChange={(e) => patch(p.id, { track_stock: e.target.checked })}
+                />
+                <span style={{ fontWeight: 500 }}>Hacer seguimiento de inventario</span>
               </label>
-            </span>
+
+              {p.track_stock ? (
+                <>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                    <span className="muted">En existencia:</span>
+                    <input
+                      type="number"
+                      step="any"
+                      className="field"
+                      style={{ width: 85, margin: 0, padding: "3px 6px" }}
+                      defaultValue={p.stock_quantity ?? 0}
+                      key={`${p.id}-stock-${p.stock_quantity ?? 0}`}
+                      placeholder="0"
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val !== Number(p.stock_quantity)) {
+                          patch(p.id, { stock_quantity: val });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                    <span className="muted">Alerta stock bajo:</span>
+                    <input
+                      type="number"
+                      step="any"
+                      className="field"
+                      style={{ width: 85, margin: 0, padding: "3px 6px" }}
+                      defaultValue={p.low_stock_threshold ?? ""}
+                      key={`${p.id}-low-${p.low_stock_threshold ?? ""}`}
+                      placeholder="Ej. 5"
+                      onBlur={(e) => {
+                        const val = e.target.value.trim() === "" ? null : parseFloat(e.target.value);
+                        if (val !== p.low_stock_threshold) {
+                          patch(p.id, { low_stock_threshold: val });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {(() => {
+                    const qty = Number(p.stock_quantity ?? 0);
+                    const isOut = qty <= 0;
+                    const isLow = !isOut && p.low_stock_threshold != null && qty <= Number(p.low_stock_threshold);
+                    if (isOut) return <span className="stock-tag out-stock">Agotado</span>;
+                    if (isLow) return <span className="stock-tag low-stock">⚠️ Stock bajo ({qty})</span>;
+                    return <span className="stock-tag in-stock">En stock ({qty})</span>;
+                  })()}
+                </>
+              ) : (
+                <span className="muted" style={{ fontSize: 12 }}>Inventario no rastreado</span>
+              )}
+            </div>
           </div>
         ))}
       </section>
@@ -1050,6 +1266,11 @@ function FloorView({ canCash }) {
   const [picked, setPicked] = useState([]);
   const [selected, setSelected] = useState([]);
   const [destId, setDestId] = useState("");
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitItems, setSplitItems] = useState([]);
+  const [splitTargetMode, setSplitTargetMode] = useState("subticket");
+  const [splitSubticketName, setSplitSubticketName] = useState("");
+  const [splitSpaceId, setSplitSpaceId] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
   const [tipCents, setTipCents] = useState(0);
   const [tipTouched, setTipTouched] = useState(false);
@@ -1463,6 +1684,22 @@ function FloorView({ canCash }) {
                 </div>
               )}
               <button
+                type="button"
+                className="rowbtn"
+                style={{ marginTop: 8, borderColor: "var(--hermes-accent)", color: "var(--hermes-accent)" }}
+                disabled={lockedPay || (current.items || []).filter((i) => i.status !== "void").length < 2}
+                onClick={() => {
+                  setSplitItems([]);
+                  setSplitTargetMode("subticket");
+                  const spaceName = current.space?.name || `Ticket #${current.id}`;
+                  setSplitSubticketName(`${spaceName} (2)`);
+                  setSplitSpaceId("");
+                  setShowSplit(true);
+                }}
+              >
+                Dividir ticket
+              </button>
+              <button
                 className="primary"
                 onClick={() =>
                   run(async () => api(`/api/orders/${current.id}/send`, { method: "POST" }))
@@ -1498,75 +1735,131 @@ function FloorView({ canCash }) {
             <div key={cat.name}>
               <div className="zone-label">{cat.name}</div>
               <div className="article-grid">
-                {cat.items.map((p) => (
-                  <button
-                    key={p.id}
-                    className="rowbtn"
-                    disabled={!current}
-                    onClick={() => {
-                      if (p.modifiers && p.modifiers.length) {
-                        setPending(p);
-                        setPicked([]);
-                        return;
-                      }
-                      run(async () =>
-                        api(`/api/orders/${current.id}/items`, {
-                          method: "POST",
-                          body: JSON.stringify({ product_id: p.id, qty: 1 }),
-                        })
-                      );
-                    }}
-                  >
-                    <span>
-                      <strong>{p.name}</strong>
-                      {p.sku ? <span className="sku">{p.sku}</span> : null}
-                    </span>
-                    <span className="amt">{money(p.price_cents)}</span>
-                  </button>
-                ))}
+                {cat.items.map((p) => {
+                  const isTracked = !!p.track_stock;
+                  const qty = Number(p.stock_quantity ?? 0);
+                  const isOut = isTracked && qty <= 0;
+                  const isLow = isTracked && !isOut && p.low_stock_threshold != null && qty <= Number(p.low_stock_threshold);
+
+                  return (
+                    <button
+                      key={p.id}
+                      className={`rowbtn${isOut ? " article-btn-out" : ""}`}
+                      disabled={!current || isOut}
+                      title={isOut ? "Artículo agotado" : undefined}
+                      onClick={() => {
+                        if (p.modifiers && p.modifiers.length) {
+                          setPending(p);
+                          setPicked([]);
+                          return;
+                        }
+                        run(async () =>
+                          api(`/api/orders/${current.id}/items`, {
+                            method: "POST",
+                            body: JSON.stringify({ product_id: p.id, qty: 1 }),
+                          })
+                        );
+                      }}
+                    >
+                      <span>
+                        <strong>{p.name}</strong>
+                        {p.sku ? <span className="sku">{p.sku}</span> : null}
+                        {isTracked && (
+                          <div style={{ marginTop: 2 }}>
+                            {isOut ? (
+                              <span className="stock-tag out-stock">Agotado</span>
+                            ) : isLow ? (
+                              <span className="stock-tag low-stock">⚠️ Bajo: {qty}</span>
+                            ) : (
+                              <span className="stock-tag in-stock">{qty} disp.</span>
+                            )}
+                          </div>
+                        )}
+                      </span>
+                      <span className="amt">{money(p.price_cents)}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
           {pending && (
-            <div className="ticket">
-              <p>
-                <strong>Modificador · {pending.name}</strong>
-              </p>
-              {pending.modifiers.map((m) => (
-                <label key={m.id} className="muted" style={{ display: "block", marginTop: 6 }}>
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(m.id)}
-                    onChange={() =>
-                      setPicked(
-                        picked.includes(m.id) ? picked.filter((id) => id !== m.id) : [...picked, m.id]
-                      )
+            <div className="modal-backdrop" onClick={() => { setPending(null); setPicked([]); }}>
+              <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>{pending.name}</h2>
+                  <button type="button" className="btn-del-mod" onClick={() => { setPending(null); setPicked([]); }}>✕</button>
+                </div>
+                <div className="modal-body">
+                  <p className="muted" style={{ marginTop: 0 }}>
+                    Precio base: <strong>{money(pending.price_cents)}</strong>
+                  </p>
+                  <p className="muted" style={{ marginBottom: 8 }}>Selecciona modificadores u opciones:</p>
+                  <div>
+                    {pending.modifiers.map((m) => {
+                      const isPicked = picked.includes(m.id);
+                      return (
+                        <div
+                          key={m.id}
+                          className={`split-item-row${isPicked ? " selected" : ""}`}
+                          onClick={() => {
+                            setPicked((prev) =>
+                              prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                            );
+                          }}
+                        >
+                          <label style={{ margin: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={isPicked}
+                              onChange={() => {}}
+                            />
+                            <span>{m.name}</span>
+                          </label>
+                          <span className="amt">
+                            {m.price_delta_cents ? `+${money(m.price_delta_cents)}` : "Sin costo"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="modal-actions">
+                  <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+                    <span>Total: <strong>{money(
+                      pending.price_cents +
+                      picked.reduce((sum, mid) => {
+                        const m = pending.modifiers.find((x) => x.id === mid);
+                        return sum + (m?.price_delta_cents || 0);
+                      }, 0)
+                    )}</strong></span>
+                  </div>
+                  <button type="button" className="tab" onClick={() => { setPending(null); setPicked([]); }}>
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={() =>
+                      run(async () => {
+                        const order = await api(`/api/orders/${current.id}/items`, {
+                          method: "POST",
+                          body: JSON.stringify({
+                            product_id: pending.id,
+                            qty: 1,
+                            modifier_ids: picked,
+                          }),
+                        });
+                        setPending(null);
+                        setPicked([]);
+                        return order;
+                      })
                     }
-                  />{" "}
-                  {m.name}
-                  {m.price_delta_cents ? ` (+${money(m.price_delta_cents)})` : ""}
-                </label>
-              ))}
-              <button
-                className="primary"
-                onClick={() =>
-                  run(async () => {
-                    const order = await api(`/api/orders/${current.id}/items`, {
-                      method: "POST",
-                      body: JSON.stringify({
-                        product_id: pending.id,
-                        qty: 1,
-                        modifier_ids: picked,
-                      }),
-                    });
-                    setPending(null);
-                    setPicked([]);
-                    return order;
-                  })
-                }
-              >
-                Agregar
-              </button>
+                  >
+                    Añadir al ticket
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -1622,12 +1915,140 @@ function FloorView({ canCash }) {
                     tip_cents: tipCents,
                   }),
                 });
+                try {
+                  const snd = new Audio("/payment_done.wav");
+                  snd.play().catch(() => {});
+                } catch {}
                 return out.order || out;
               })
             }
           >
             Cobrar
           </button>
+        </div>
+      )}
+
+      {/* Modal Dividir Ticket */}
+      {showSplit && current && (
+        <div className="modal-backdrop" onClick={() => setShowSplit(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Dividir ticket · {current.space?.name || `#${current.id}`}</h2>
+              <button type="button" className="btn-del-mod" onClick={() => setShowSplit(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <p className="muted" style={{ marginTop: 0 }}>
+                Selecciona los artículos que deseas mover a la nueva cuenta.
+              </p>
+              <div style={{ marginBottom: 14 }}>
+                {current.items.filter((i) => i.status !== "void").map((item) => {
+                  const isSel = splitItems.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`split-item-row${isSel ? " selected" : ""}`}
+                      onClick={() => {
+                        setSplitItems((prev) =>
+                          prev.includes(item.id) ? prev.filter((x) => x !== item.id) : [...prev, item.id]
+                        );
+                      }}
+                    >
+                      <label style={{ margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={isSel}
+                          onChange={() => {}}
+                        />
+                        <span>
+                          <strong>{item.qty}× {item.name}</strong>
+                          {item.modifiers?.length ? ` (${item.modifiers.map((m) => m.name).join(", ")})` : ""}
+                        </span>
+                      </label>
+                      <span className="amt">{money(item.price_cents * item.qty)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="muted" style={{ marginBottom: 6 }}>Destino de los artículos seleccionados:</p>
+              <div className="actions" style={{ marginBottom: 10 }}>
+                <button
+                  type="button"
+                  className={splitTargetMode === "subticket" ? "tab on" : "tab"}
+                  onClick={() => setSplitTargetMode("subticket")}
+                >
+                  Nuevo ticket
+                </button>
+                <button
+                  type="button"
+                  className={splitTargetMode === "space" ? "tab on" : "tab"}
+                  onClick={() => setSplitTargetMode("space")}
+                >
+                  Otra mesa
+                </button>
+              </div>
+
+              {splitTargetMode === "subticket" ? (
+                <div>
+                  <p className="muted" style={{ margin: "4px 0" }}>Nombre identificador</p>
+                  <input
+                    className="field"
+                    value={splitSubticketName}
+                    onChange={(e) => setSplitSubticketName(e.target.value)}
+                    placeholder="Ej. Mesa 1 (Ticket B)"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <p className="muted" style={{ margin: "4px 0" }}>Seleccionar mesa destino</p>
+                  <select
+                    className="field"
+                    value={splitSpaceId}
+                    onChange={(e) => setSplitSpaceId(e.target.value)}
+                  >
+                    <option value="">Elegir mesa…</option>
+                    {destSpaces.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {orderBySpace[s.id] ? "(ocupada)" : "(libre)"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="tab" onClick={() => setShowSplit(false)}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={
+                  splitItems.length === 0 ||
+                  splitItems.length >= current.items.filter((i) => i.status !== "void").length ||
+                  (splitTargetMode === "space" && !splitSpaceId)
+                }
+                onClick={() =>
+                  run(async () => {
+                    const body = {
+                      item_ids: splitItems,
+                      target_space_id: splitTargetMode === "space" ? Number(splitSpaceId) : null,
+                      target_name: splitTargetMode === "subticket" ? splitSubticketName.trim() || null : null,
+                    };
+                    const res = await api(`/api/orders/${current.id}/split`, {
+                      method: "POST",
+                      body: JSON.stringify(body),
+                    });
+                    setShowSplit(false);
+                    setSplitItems([]);
+                    return res.destination || res.source;
+                  })
+                }
+              >
+                Dividir ticket ({splitItems.length})
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
@@ -1718,14 +2139,76 @@ function KdsScreen() {
   );
 }
 
+function playOrderChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.25, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(880, now + 0.15);
+    gain2.gain.setValueAtTime(0.25, now + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.15);
+    osc2.stop(now + 0.6);
+  } catch (e) {
+    console.warn("No se pudo reproducir el sonido KDS", e);
+  }
+}
+
 function KdsView({ onAuthFail }) {
   const [board, setBoard] = useState(null);
   const [error, setError] = useState("");
   const [, setTick] = useState(0);
+  const [soundOn, setSoundOn] = useState(() => localStorage.getItem("hermes_kds_sound") !== "false");
+  const [showRecall, setShowRecall] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const prevItemIdsRef = useRef(null);
 
   const refresh = useCallback(async () => {
-    setBoard(await api("/api/kds"));
-  }, []);
+    const b = await api("/api/kds");
+    setBoard(b);
+
+    const currentIds = new Set();
+    (b?.stations || []).forEach((st) => {
+      (st.tickets || []).forEach((t) => {
+        if (t.status === "queued" || t.status === "prep") {
+          currentIds.add(t.item_id);
+        }
+      });
+    });
+
+    if (prevItemIdsRef.current !== null) {
+      let hasNew = false;
+      for (const id of currentIds) {
+        if (!prevItemIdsRef.current.has(id)) {
+          hasNew = true;
+          break;
+        }
+      }
+      if (hasNew && soundOn) {
+        playOrderChime();
+      }
+    }
+    prevItemIdsRef.current = currentIds;
+  }, [soundOn]);
 
   useEffect(() => {
     refresh().catch((e) => {
@@ -1759,6 +2242,27 @@ function KdsView({ onAuthFail }) {
     }
   }
 
+  async function openRecall() {
+    setShowRecall(true);
+    setLoadingHistory(true);
+    try {
+      const list = await api("/api/kds/history");
+      setHistory(list);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  async function recallItem(itemId) {
+    await bump(itemId, "recall");
+    try {
+      const list = await api("/api/kds/history");
+      setHistory(list);
+    } catch {}
+  }
+
   const mode = board?.kitchen_mode;
   const emptyHint =
     mode === "none"
@@ -1769,7 +2273,26 @@ function KdsView({ onAuthFail }) {
 
   return (
     <>
-      <p className="tag">Lo que ve cocina o barra. Se actualiza solo.</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+        <p className="tag" style={{ margin: 0 }}>Lo que ve cocina o barra. Se actualiza solo.</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className={`tab ${soundOn ? "on" : ""}`}
+            onClick={() => {
+              const next = !soundOn;
+              setSoundOn(next);
+              localStorage.setItem("hermes_kds_sound", String(next));
+              if (next) playOrderChime();
+            }}
+          >
+            {soundOn ? "🔔 Sonido ON" : "🔕 Sonido OFF"}
+          </button>
+          <button className="tab" onClick={openRecall}>
+            ↺ Recuperar (Recall)
+          </button>
+        </div>
+      </div>
+
       {error && <p className="err">{error}</p>}
       {!board && <p className="muted">Cargando estaciones…</p>}
       {board && board.stations.length === 0 && <p className="muted">{emptyHint}</p>}
@@ -1783,9 +2306,16 @@ function KdsView({ onAuthFail }) {
             {st.tickets.map((t) => (
               <article className={`ticket ${ticketTone(t)}`} key={t.item_id}>
                 <header>
-                  <strong>
-                    {t.qty}× {t.name}
-                  </strong>
+                  <div>
+                    {t.status === "void" && (
+                      <div style={{ marginBottom: 4 }}>
+                        <span className="badge-void">Anulado</span>
+                      </div>
+                    )}
+                    <strong>
+                      {t.qty}× {t.name}
+                    </strong>
+                  </div>
                   <span>
                     {t.space || (t.queue_number ? `Turno ${t.queue_number}` : `#${t.order_id}`)}
                     {t.guest_name ? ` · ${t.guest_name}` : ""}
@@ -1797,25 +2327,83 @@ function KdsView({ onAuthFail }) {
                   <p className="muted">{t.modifiers.map((m) => m.name).join(" · ")}</p>
                 ) : null}
                 {t.notes && <p className="muted">{t.notes}</p>}
-                {t.status !== "void" && (
-                <div className="actions">
-                  {t.status === "queued" && (
-                    <button className="rowbtn" onClick={() => bump(t.item_id, "prep")}>
-                      En prep
+                {t.status !== "void" ? (
+                  <div className="actions">
+                    {t.status === "queued" && (
+                      <button className="rowbtn" onClick={() => bump(t.item_id, "prep")}>
+                        En prep
+                      </button>
+                    )}
+                    {t.status === "prep" && (
+                      <button className="primary" onClick={() => bump(t.item_id, "ready")}>
+                        Listo
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="actions">
+                    <button className="btn-void-dismiss" onClick={() => bump(t.item_id, "dismiss")}>
+                      Descartar aviso
                     </button>
-                  )}
-                  {t.status === "prep" && (
-                    <button className="primary" onClick={() => bump(t.item_id, "ready")}>
-                      Listo
-                    </button>
-                  )}
-                </div>
+                  </div>
                 )}
               </article>
             ))}
           </section>
         ))}
       </div>
+
+      {showRecall && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div className="card" style={{ maxWidth: 560, width: "100%", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2>Tickets completados (Recall)</h2>
+              <button className="tab" onClick={() => setShowRecall(false)}>
+                Cerrar
+              </button>
+            </div>
+            {loadingHistory && <p className="muted">Cargando historial…</p>}
+            {!loadingHistory && history.length === 0 && <p className="muted">No hay tickets recientes completados.</p>}
+            <div className="list">
+              {history.map((h) => (
+                <div className="row" key={h.item_id} style={{ alignItems: "center" }}>
+                  <div>
+                    <strong>
+                      {h.qty}× {h.name}
+                    </strong>
+                    <div className="muted">
+                      {h.space || (h.queue_number ? `Turno ${h.queue_number}` : `#${h.order_id}`)}
+                      {h.guest_name ? ` · ${h.guest_name}` : ""}
+                      {h.ready_at ? ` · Listo hace ${waitLabel(h.ready_at)}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    className="primary"
+                    style={{ width: "auto", margin: 0, padding: "6px 14px" }}
+                    onClick={() => recallItem(h.item_id)}
+                  >
+                    Recuperar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1982,7 +2570,6 @@ function CashView() {
               </div>
               );
             })}
-            ))}
           </section>
           <section className="card" style={{ marginTop: 18 }}>
             <h2>Cerrar turno</h2>

@@ -42,6 +42,9 @@ def product_out(row: dict) -> dict:
         },
         "unlimited": row["unlimited"],
         "available": row["available"],
+        "track_stock": bool(row.get("track_stock")),
+        "stock_quantity": float(row["stock_quantity"]) if row.get("stock_quantity") is not None else 0.0,
+        "low_stock_threshold": float(row["low_stock_threshold"]) if row.get("low_stock_threshold") is not None else None,
         "modifiers": [
             {"id": m["id"], "name": m["name"], "price_delta_cents": m["price_delta_cents"]}
             for m in mods

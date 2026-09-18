@@ -112,6 +112,18 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.13.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE order_items ADD COLUMN IF NOT EXISTS kds_dismissed BOOLEAN NOT NULL DEFAULT FALSE",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.14.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS track_stock BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_quantity NUMERIC(10, 2) NOT NULL DEFAULT 0",
+    "ALTER TABLE products ADD COLUMN IF NOT EXISTS low_stock_threshold NUMERIC(10, 2)",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.15.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

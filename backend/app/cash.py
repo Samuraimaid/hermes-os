@@ -295,15 +295,31 @@ def pay_order(order_id: int, method: str, amount_cents: int, tip_cents: int = 0)
     )
     bal = order_balance(order_id)
     if bal["due_cents"] == 0:
-        if bal["order"]["status"] not in {"delivered", "closed"}:
-            try:
-                deliver_order(order_id)
-            except ValueError:
-                pass
-        try:
-            close_order(order_id)
-        except ValueError:
-            pass
+        db.execute(
+            """
+            UPDATE order_items
+            SET status = 'served', ready_at = COALESCE(ready_at, now())
+            WHERE order_id = %s AND status != 'void'
+            """,
+            (order_id,),
+        )
+        db.execute(
+            "UPDATE orders SET status = 'closed', closed_at = COALESCE(closed_at, now()) WHERE id = %s",
+            (order_id,),
+        )
+        # Descuento automático de existencias (Loyverse Cap. 4)
+        order_bundle = _load_order(order_id)
+        if order_bundle:
+            for item in order_bundle["items"]:
+                if item["status"] != "void":
+                    db.execute(
+                        """
+                        UPDATE products
+                        SET stock_quantity = stock_quantity - %s
+                        WHERE id = %s AND track_stock = TRUE
+                        """,
+                        (item["qty"], item["product_id"]),
+                    )
         bal = order_balance(order_id)
     bal["shift"] = current_shift()
     return bal
@@ -356,6 +372,17 @@ def refund_order(order_id: int) -> dict:
         (shift["id"], order_id, method, amount, tips),
     )
     db.execute("UPDATE orders SET refunded_at = now() WHERE id = %s", (order_id,))
+    # Reposición de inventario en reembolso (Loyverse Cap. 4)
+    for item in bundle["items"]:
+        if item["status"] != "void":
+            db.execute(
+                """
+                UPDATE products
+                SET stock_quantity = stock_quantity + %s
+                WHERE id = %s AND track_stock = TRUE
+                """,
+                (item["qty"], item["product_id"]),
+            )
     return {
         "ok": True,
         "order_id": order_id,

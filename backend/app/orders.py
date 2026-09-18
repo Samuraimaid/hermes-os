@@ -443,6 +443,16 @@ def bump_item(item_id: int, action: str) -> dict:
             "UPDATE order_items SET status = 'served' WHERE id = %s",
             (item_id,),
         )
+    elif action == "dismiss":
+        db.execute(
+            "UPDATE order_items SET kds_dismissed = TRUE WHERE id = %s",
+            (item_id,),
+        )
+    elif action == "recall":
+        db.execute(
+            "UPDATE order_items SET status = 'prep', ready_at = NULL, kds_dismissed = FALSE WHERE id = %s",
+            (item_id,),
+        )
     else:
         raise ValueError("Acción no válida")
 
@@ -562,6 +572,7 @@ def station_tickets(station_key: str) -> list[dict]:
           AND s.key = %s
           AND i.sent_at IS NOT NULL
           AND i.status IN ('queued', 'prep', 'void')
+          AND NOT COALESCE(i.kds_dismissed, FALSE)
         ORDER BY i.sent_at
         """,
         (venue["id"], station_key),
@@ -611,6 +622,47 @@ def kds_board() -> dict:
             for s in stations
         ],
     }
+
+
+def kds_history(limit: int = 20) -> list[dict]:
+    venue = _venue()
+    rows = db.fetch_all(
+        """
+        SELECT i.id, i.name_snapshot, i.qty, i.status, i.notes, i.sent_at, i.ready_at,
+               o.id AS order_id, o.queue_number, o.origin, o.dining_option, o.guest_name,
+               sp.name AS space_name, s.key AS station_key, s.name AS station_name
+        FROM order_items i
+        JOIN orders o ON o.id = i.order_id
+        JOIN stations s ON s.id = i.station_id
+        LEFT JOIN spaces sp ON sp.id = o.space_id
+        WHERE o.venue_id = %s
+          AND i.status = 'ready'
+          AND i.ready_at IS NOT NULL
+        ORDER BY i.ready_at DESC
+        LIMIT %s
+        """,
+        (venue["id"], limit),
+    )
+    return [
+        {
+            "item_id": r["id"],
+            "order_id": r["order_id"],
+            "name": r["name_snapshot"],
+            "qty": r["qty"],
+            "status": r["status"],
+            "notes": r["notes"],
+            "queue_number": r["queue_number"],
+            "space": r["space_name"],
+            "dining_option": r.get("dining_option"),
+            "dining_label": DINING_LABELS.get(r.get("dining_option") or ""),
+            "guest_name": (r.get("guest_name") or "").strip() or None,
+            "station": r["station_key"],
+            "sent_at": r["sent_at"].isoformat() if r.get("sent_at") else None,
+            "ready_at": r["ready_at"].isoformat() if r.get("ready_at") else None,
+            "modifiers": _item_mods(r["id"]),
+        }
+        for r in rows
+    ]
 
 
 def _has_payments(order_id: int) -> bool:
@@ -693,6 +745,86 @@ def move_item(item_id: int, to_space_id: int) -> dict:
     _close_if_empty(source["order"]["id"])
     _refresh_order_status(dest["id"])
     return _pair_out(source["order"]["id"], dest["id"])
+
+
+def split_order(
+    order_id: int,
+    item_ids: list[int],
+    target_space_id: int | None = None,
+    target_name: str | None = None,
+) -> dict:
+    if not item_ids:
+        raise ValueError("Selecciona al menos un artículo para dividir")
+
+    source_bundle = _load_order(order_id)
+    if not source_bundle:
+        raise ValueError("Orden origen no encontrada")
+    source = source_bundle["order"]
+    if source["status"] in {"closed", "void"}:
+        raise ValueError("La orden origen está cerrada")
+    if _has_payments(order_id):
+        raise ValueError("Hay pagos en la cuenta origen")
+
+    live_items = [i for i in source_bundle["items"] if i["status"] != "void"]
+    live_ids = {i["id"] for i in live_items}
+    for iid in item_ids:
+        if iid not in live_ids:
+            raise ValueError(f"El ítem {iid} no pertenece a esta orden o está anulado")
+
+    if len(item_ids) >= len(live_items):
+        raise ValueError("Al menos un artículo debe permanecer en el ticket original")
+
+    venue = _venue()
+    if target_space_id:
+        dest_space = db.fetch_one(
+            "SELECT * FROM spaces WHERE id = %s AND venue_id = %s",
+            (target_space_id, venue["id"]),
+        )
+        if not dest_space:
+            raise ValueError("Espacio destino no encontrado")
+        _require_floor_space(dest_space)
+        dest_order = open_order(target_space_id, source.get("cover_count"), source.get("dining_option"))
+        dest_id = dest_order["id"]
+        if dest_id == order_id:
+            raise ValueError("El destino es el mismo ticket")
+        if _has_payments(dest_id):
+            raise ValueError("Hay pagos en la cuenta destino")
+    else:
+        space_name = source_bundle.get("space", {}).get("name") if source_bundle.get("space") else "Ticket"
+        g_name = (target_name or f"{space_name} (2)").strip()
+        created = db.fetch_one(
+            """
+            INSERT INTO orders (
+                venue_id, space_id, origin, status, cover_count, dining_option,
+                guest_name, tax_enabled, tax_bps
+            )
+            VALUES (%s, %s, %s, 'open', %s, %s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                venue["id"],
+                source.get("space_id"),
+                source["origin"],
+                source.get("cover_count"),
+                source.get("dining_option"),
+                g_name,
+                bool(venue.get("tax_enabled")),
+                int(venue.get("tax_bps") or 0),
+            ),
+        )
+        dest_id = created["id"]
+
+    with db.connect() as conn:
+        for iid in item_ids:
+            conn.execute(
+                "UPDATE order_items SET order_id = %s WHERE id = %s",
+                (dest_id, iid),
+            )
+
+    _close_if_empty(order_id)
+    _refresh_order_status(dest_id)
+    return _pair_out(order_id, dest_id)
+
 
 
 def merge_order(order_id: int, onto_order_id: int) -> dict:

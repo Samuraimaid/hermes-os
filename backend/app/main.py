@@ -96,12 +96,31 @@ class ProductIn(BaseModel):
     category: str | None = None
     destination_station_id: int | None = None
     sku: str | None = None
+    track_stock: bool = False
+    stock_quantity: float = 0.0
+    low_stock_threshold: float | None = None
 
 
 class ProductPatchIn(BaseModel):
     price_cents: int | None = None
     available: bool | None = None
     sku: str | None = None
+    name: str | None = None
+    category: str | None = None
+    track_stock: bool | None = None
+    stock_quantity: float | None = None
+    low_stock_threshold: float | None = None
+
+
+class SplitOrderIn(BaseModel):
+    item_ids: list[int]
+    target_space_id: int | None = None
+    target_name: str | None = None
+
+
+class ModifierIn(BaseModel):
+    name: str
+    price_delta_cents: int = 0
 
 
 CURRENCY_SYMBOL = {"NIO": "C$", "USD": "$"}
@@ -274,13 +293,39 @@ def create_product(body: ProductIn):
         body.category,
         body.destination_station_id,
         body.sku,
+        body.track_stock,
+        body.stock_quantity,
+        body.low_stock_threshold,
     )
 
 
 @app.patch("/api/products/{product_id}")
 def patch_product(product_id: int, body: ProductPatchIn):
     _need_seed()
-    return _ok(catalog_svc.update_product, product_id, body.price_cents, body.available, body.sku)
+    return _ok(
+        catalog_svc.update_product,
+        product_id,
+        body.price_cents,
+        body.available,
+        body.sku,
+        body.name,
+        body.category,
+        body.track_stock,
+        body.stock_quantity,
+        body.low_stock_threshold,
+    )
+
+
+@app.post("/api/products/{product_id}/modifiers")
+def add_modifier(product_id: int, body: ModifierIn):
+    _need_seed()
+    return _ok(catalog_svc.add_modifier, product_id, body.name, body.price_delta_cents)
+
+
+@app.delete("/api/modifiers/{modifier_id}")
+def delete_modifier(modifier_id: int):
+    _need_seed()
+    return _ok(catalog_svc.delete_modifier, modifier_id)
 
 
 @app.get("/api/orders")
@@ -350,6 +395,12 @@ def merge_order(order_id: int, body: MergeOrderIn):
     return _ok(order_svc.merge_order, order_id, body.onto_order_id)
 
 
+@app.post("/api/orders/{order_id}/split")
+def split_order(order_id: int, body: SplitOrderIn):
+    _need_seed()
+    return _ok(order_svc.split_order, order_id, body.item_ids, body.target_space_id, body.target_name)
+
+
 @app.post("/api/orders/{order_id}/discount")
 def set_discount(order_id: int, body: DiscountIn):
     _need_seed()
@@ -390,6 +441,12 @@ def station_tickets(station_key: str):
 def kds_board():
     _need_seed()
     return _ok(order_svc.kds_board)
+
+
+@app.get("/api/kds/history")
+def kds_history():
+    _need_seed()
+    return _ok(order_svc.kds_history)
 
 
 @app.get("/api/sales/today")

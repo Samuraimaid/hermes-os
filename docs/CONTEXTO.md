@@ -3,13 +3,16 @@
 Documento para retomar el hilo en VS Code / Grok / cualquier chat nuevo.
 No sustituye al código. Si este texto y el repo discrepan, gana el repo.
 
-Última actualización del hilo original: 17 septiembre 2026.
+Última actualización del hilo: 18 septiembre 2026.
 
 ## Qué se pidió al inicio (hilo limpio)
 
 Empezar un producto **nuevo**, plantilla para cualquier local de comida o bebida. Se eligió el nombre **Hermes**. Trabajar en limpio: sin arrastrar un cliente anterior.
 
-Referencias de mercado (ideas, no clones):
+Referencia principal de mercado y experiencia:
+- **Loyverse POS** (manual oficial y APKs de referencia): POS + KDS + CDS; control de stock, clientes, descuentos e impresoras.
+
+Referencias de mercado adicionales (ideas, no clones):
 
 - Loyverse POS / loyverse.com — POS + KDS gratis; empleados e inventario como extra
 - Artículo Siigo «Software para restaurantes» — Gastrobar, Loggro, SoftRestaurant, Carbonara, GloriaFood
@@ -71,12 +74,22 @@ Orden de commits (rama `main`):
 28. Nombre opcional en ticket abierto (franja, CDS, KDS)
 29. Propina pendiente desde CDS (0/10/15/otro); TPV puede anularla
 30. Recibo HTML (`window.print()`)
+31. Modificadores dinámicos con sobreprecio por producto en catálogo (`/articulos`) y modal interactivo en TPV.
+32. División de cuenta (Split Ticket) seleccionando ítems específicos hacia otra mesa o ticket nuevo.
+33. Integración de audio feedback de cobro exitoso y anulación (extraídos de Loyverse POS).
+34. **Control de Stock e Inventario Básico de Artículos (Loyverse Cap. 4)**:
+    - Migración `0.15.0`: `track_stock`, `stock_quantity`, `low_stock_threshold`.
+    - Descuento automático de existencias en cobro de ticket (`due_cents == 0`).
+    - Cierre automático de orden y liberación de mesa al cobrar.
+    - Reposición automática de inventario en caso de reembolso (`/refund`).
+    - UI de Catálogo (`/articulos`): seguimiento de stock, edición de existencias, alerta de stock bajo e insignias.
+    - UI de TPV (`/`): insignias visuales de stock (`X disp.`, `⚠️ Bajo: X`, `Agotado`) y bloqueo de selección si está agotado.
 
 ### API útil
 
 - `POST /api/login` `{ pin }`
 - `GET /api/instance` `GET /api/spaces` `GET /api/products` `GET /api/orders`
-- `POST /api/products` `PATCH /api/products/{id}` (cap `admin`)
+- `POST /api/products` `PATCH /api/products/{id}` (cap `admin`, incluye `track_stock`, `stock_quantity`, `low_stock_threshold`)
 - `POST /api/orders` `POST /api/orders/{id}/items` (`modifier_ids`) · `POST /api/orders/{id}/dining`
 - `POST /api/orders/{id}/send` `/deliver` `/close` `/pay`
 - `POST /api/items/{id}/move` `{ to_space_id }` · `POST /api/orders/{id}/merge` `{ onto_order_id }`
@@ -84,7 +97,7 @@ Orden de commits (rama `main`):
 - `POST /api/orders/{id}/discount` `{ type, value }`
 - `GET /api/cds` (sin PIN; ticket activo)
 - `GET /api/sales/today` (cap `cash`) · `POST /api/venue/tax` `{ enabled, bps }`
-- `POST /api/orders/{id}/refund` (cap `cash`)
+- `POST /api/orders/{id}/refund` (cap `cash`, repone existencias)
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
 
@@ -98,7 +111,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 ## Qué no está
 
 - WebSocket (KDS y CDS hacen poll 4 s)
-- Inventario / recetas
+- Recetas / insumos compuestos (está el stock por artículo directo)
 - Conector fiscal
 - Offline real del modo híbrido (hoy es bandera + docs)
 - Pantallas de publicidad / CDS propina
@@ -107,8 +120,21 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Siguiente paso acordado
 
-1. Catálogo de artículos en back office, o reembolso (`docs/GUIA_PRODUCTO.md`).
-2. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
+1. **Tema, Tipografía y UX Loyverse POS**:
+   - Paleta de color verde institucional (`#107C41` / `#2E7D32`), fondos `#F5F5F5` y tarjetas Material `#FFFFFF`.
+   - Tipografía Roboto oficial con jerarquía Loyverse.
+   - Rejilla de artículos con tarjetas cuadradas y pestañas de categorías deslizables superiores.
+   - Barra de ticket lateral estilo Loyverse con botón verde grande inferior "Cobrar".
+2. **Gestión de Descuentos Preconfigurados y Recargos** (Loyverse Cap. 6).
+3. **Módulo de Clientes & Fidelización** (Loyverse Cap. 8).
+
+## Comando especial "Bye"
+
+Cuando el usuario escriba **"Bye"** al final de una sesión de trabajo:
+1. Guardar todo y hacer commit descriptivo en git.
+2. Actualizar el historial de sesión en `docs/CONTEXTO.md`.
+3. Detener los contenedores Docker (`docker compose stop`).
+4. Apagar el PC (`shutdown /s /t 15`).
 
 ## Cómo pedirle a Grok en VS Code
 
