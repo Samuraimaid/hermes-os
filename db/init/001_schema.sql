@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS orders (
     queue_number    INT,
     dining_option   TEXT,
     notes           TEXT,
+    discount_type   TEXT,
+    discount_value  INT NOT NULL DEFAULT 0,
     opened_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     closed_at       TIMESTAMPTZ
 );

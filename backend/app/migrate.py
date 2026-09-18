@@ -61,6 +61,12 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.6.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_type TEXT",
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_value INT NOT NULL DEFAULT 0",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.7.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

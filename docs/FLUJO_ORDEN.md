@@ -22,6 +22,9 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 9. `POST /api/orders/{id}/merge` `{ onto_order_id }` — todos los ítems vivos pasan a la otra cuenta.
 10. `POST /api/items/{id}/void` — anula el renglón. Falla si hay pagos. Si no quedan ítems vivos, cierra el ticket. Cap `floor`.
 11. `GET /api/cds` — ticket activo para la pantalla cliente (sin PIN). Sin órdenes abiertas, `ticket: null`.
+12. `POST /api/orders/{id}/discount` `{ type: percent | amount | null, value }` — un descuento por cuenta. `percent` es 0–100; `amount` va en centavos. Falla si hay pagos. Cap `floor`.
+
+La precuenta trae `subtotal_cents`, `discount_cents` y `total_cents`. `due_cents` usa el total ya descontado. CDS muestra lo mismo.
 
 Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status de ambas; si el origen queda vacío, se cierra (libera la mesa). Solo entre espacios `table` o `tab`. Cap `floor`.
 

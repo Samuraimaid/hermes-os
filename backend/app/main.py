@@ -60,6 +60,11 @@ class MergeOrderIn(BaseModel):
     onto_order_id: int
 
 
+class DiscountIn(BaseModel):
+    type: str | None = None
+    value: int = 0
+
+
 def current_profile() -> str:
     profile = settings.hermes_profile.strip().lower()
     return profile if profile in PROFILES else "restaurant"
@@ -256,6 +261,12 @@ def move_item(item_id: int, body: MoveItemIn):
 def merge_order(order_id: int, body: MergeOrderIn):
     _need_seed()
     return _ok(order_svc.merge_order, order_id, body.onto_order_id)
+
+
+@app.post("/api/orders/{order_id}/discount")
+def set_discount(order_id: int, body: DiscountIn):
+    _need_seed()
+    return _ok(order_svc.set_discount, order_id, body.type, body.value)
 
 
 @app.get("/api/stations/{station_key}/tickets")

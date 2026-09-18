@@ -147,7 +147,7 @@ Iniciar sesión (PIN)
 3. Pantalla Ventas ticket | carta | cobrar — hecho (void en el mismo corte)  
 4. Void de renglón + KDS tachado + colores de tiempo — hecho (`/kds`, aviso 5 min / tarde 10 min)  
 5. Ruta CDS mínima — hecho (artículos, subtotal, total; sin propina)  
-6. Descuento + impuesto (ticket interno)  
+6. Descuento + impuesto (ticket interno) — descuento por cuenta hecho; falta impuesto  
 7. Back office: resumen de ventas + lista de artículos  
 8. Reembolso y lista de recibos  
 9. Inventario SKU si el rubro lo pide  

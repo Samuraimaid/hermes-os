@@ -59,6 +59,7 @@ Orden de commits (rama `main`):
 16. Ventas TPV (ticket | artículos | cobrar) + void de renglón
 17. CDS: ruta `/cds` + `GET /api/cds`
 18. KDS a pantalla completa `/kds` + color por tiempo
+19. Descuento por cuenta (% o monto)
 
 ### API útil
 
@@ -68,6 +69,7 @@ Orden de commits (rama `main`):
 - `POST /api/orders/{id}/send` `/deliver` `/close` `/pay`
 - `POST /api/items/{id}/move` `{ to_space_id }` · `POST /api/orders/{id}/merge` `{ onto_order_id }`
 - `POST /api/items/{id}/void`
+- `POST /api/orders/{id}/discount` `{ type, value }`
 - `GET /api/cds` (sin PIN; ticket activo)
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
@@ -91,7 +93,7 @@ El rol `kiosk` puede pegarle a rutas de piso (para crear la orden). No cobra ni 
 
 ## Siguiente paso acordado
 
-1. Descuento + impuesto interno (`docs/GUIA_PRODUCTO.md`).
+1. Impuesto interno (`docs/GUIA_PRODUCTO.md`).
 2. No empezar inventario ni factura legal hasta que el flujo diario no se rompa.
 
 ## Cómo pedirle a Grok en VS Code

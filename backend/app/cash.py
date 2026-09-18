@@ -122,7 +122,7 @@ def order_balance(order_id: int) -> dict:
         """,
         (order_id,),
     )
-    due = max(0, body["precuenta"]["subtotal_cents"] - paid["paid"])
+    due = body["due_cents"]
     return {
         "order": body,
         "paid_cents": paid["paid"],

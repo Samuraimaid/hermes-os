@@ -71,6 +71,18 @@ def order_out(bundle: dict) -> dict:
         (order["id"],),
     )
     paid = paid_row["paid"] if paid_row else 0
+    kind = order.get("discount_type") or None
+    raw = int(order.get("discount_value") or 0)
+    if kind == "percent" and raw > 0:
+        discount = min(subtotal, subtotal * raw // 100)
+    elif kind == "amount" and raw > 0:
+        discount = min(subtotal, raw)
+        kind = "amount"
+    else:
+        discount = 0
+        kind = None
+        raw = 0
+    total = max(0, subtotal - discount)
     return {
         "id": order["id"],
         "status": order["status"],
@@ -100,12 +112,15 @@ def order_out(bundle: dict) -> dict:
             }
             for i in items
         ],
+        "discount": {"type": kind, "value": raw} if kind else None,
         "precuenta": {
             "item_count": sum(i["qty"] for i in items if i["status"] != "void"),
             "subtotal_cents": subtotal,
+            "discount_cents": discount,
+            "total_cents": total,
         },
         "paid_cents": paid,
-        "due_cents": max(0, subtotal - paid),
+        "due_cents": max(0, total - paid),
     }
 
 
@@ -637,6 +652,43 @@ def merge_order(order_id: int, onto_order_id: int) -> dict:
     _close_if_empty(order_id)
     _refresh_order_status(onto_order_id)
     return _pair_out(order_id, onto_order_id)
+
+
+def set_discount(order_id: int, discount_type: str | None, value: int = 0) -> dict:
+    bundle = _load_order(order_id)
+    if not bundle:
+        raise ValueError("Orden no encontrada")
+    if bundle["order"]["status"] in {"closed", "void"}:
+        raise ValueError("La orden está cerrada")
+    if _has_payments(order_id):
+        raise ValueError("Hay pagos en la cuenta")
+
+    kind = (discount_type or "").strip().lower() or None
+    if kind in {"none", "null"}:
+        kind = None
+    amount = int(value or 0)
+    if amount < 0:
+        raise ValueError("El descuento no puede ser negativo")
+    if kind == "percent":
+        if amount > 100:
+            raise ValueError("El porcentaje no puede superar 100")
+        if amount == 0:
+            kind = None
+    elif kind == "amount":
+        if amount == 0:
+            kind = None
+    elif kind is None:
+        amount = 0
+    else:
+        raise ValueError("Tipo de descuento no válido")
+
+    db.execute(
+        "UPDATE orders SET discount_type = %s, discount_value = %s WHERE id = %s",
+        (kind, amount if kind else 0, order_id),
+    )
+    loaded = _load_order(order_id)
+    assert loaded
+    return order_out(loaded)
 
 
 def modules_ok() -> list[str]:

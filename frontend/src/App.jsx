@@ -219,6 +219,8 @@ function CdsView() {
 
   const live = (ticket?.items || []).filter((i) => i.status !== "void");
   const subtotal = ticket?.precuenta?.subtotal_cents || 0;
+  const discount = ticket?.precuenta?.discount_cents || 0;
+  const total = ticket?.precuenta?.total_cents ?? subtotal - discount;
 
   return (
     <main className="cds">
@@ -250,9 +252,15 @@ function CdsView() {
               <span className="label">Subtotal</span>
               <strong>{money(subtotal)}</strong>
             </div>
+            {discount > 0 && (
+              <div className="row">
+                <span className="label">Descuento</span>
+                <strong>−{money(discount)}</strong>
+              </div>
+            )}
             <div className="row cds-total">
               <span>Total</span>
-              <strong>{money(subtotal)}</strong>
+              <strong>{money(total)}</strong>
             </div>
           </div>
         </>
@@ -272,6 +280,8 @@ function FloorView({ canCash }) {
   const [selected, setSelected] = useState([]);
   const [destId, setDestId] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
+  const [discKind, setDiscKind] = useState("percent");
+  const [discVal, setDiscVal] = useState("");
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
@@ -294,6 +304,18 @@ function FloorView({ canCash }) {
   useEffect(() => {
     refresh().catch((e) => setError(e.message));
   }, [refresh]);
+
+  useEffect(() => {
+    if (!current) return;
+    const d = current.discount;
+    if (d?.type === "amount") {
+      setDiscKind("amount");
+      setDiscVal(d.value ? money(d.value) : "");
+    } else {
+      setDiscKind("percent");
+      setDiscVal(d?.type === "percent" && d.value ? String(d.value) : "");
+    }
+  }, [current?.id, current?.discount?.type, current?.discount?.value]);
 
   async function run(fn) {
     try {
@@ -353,7 +375,10 @@ function FloorView({ canCash }) {
     if (!last || last.name !== cat) categories.push({ name: cat, items: [p] });
     else last.items.push(p);
   }
-  const due = current ? current.due_cents ?? current.precuenta.subtotal_cents : 0;
+  const due = current
+    ? current.due_cents ?? current.precuenta.total_cents ?? current.precuenta.subtotal_cents
+    : 0;
+  const lockedPay = Boolean(current?.paid_cents);
 
   return (
     <>
@@ -454,8 +479,74 @@ function FloorView({ canCash }) {
                 ))}
               </div>
               <p className="summary">
-                Ticket: {money(current.precuenta.subtotal_cents)} · {current.precuenta.item_count} artículos
+                Subtotal {money(current.precuenta.subtotal_cents)}
+                {(current.precuenta.discount_cents || 0) > 0
+                  ? ` · descuento −${money(current.precuenta.discount_cents)}`
+                  : ""}
+                {" · "}
+                total {money(current.precuenta.total_cents ?? current.precuenta.subtotal_cents)} ·{" "}
+                {current.precuenta.item_count} artículos
               </p>
+              <div className="ticket">
+                <p className="muted">Descuento de la cuenta</p>
+                <div className="actions">
+                  <button
+                    className={discKind === "percent" ? "tab on" : "tab"}
+                    disabled={lockedPay}
+                    onClick={() => setDiscKind("percent")}
+                  >
+                    %
+                  </button>
+                  <button
+                    className={discKind === "amount" ? "tab on" : "tab"}
+                    disabled={lockedPay}
+                    onClick={() => setDiscKind("amount")}
+                  >
+                    Monto
+                  </button>
+                </div>
+                <input
+                  className="field"
+                  disabled={lockedPay}
+                  value={discVal}
+                  placeholder={discKind === "percent" ? "10" : "0.00"}
+                  onChange={(e) => setDiscVal(e.target.value)}
+                />
+                <div className="actions">
+                  <button
+                    className="rowbtn"
+                    disabled={lockedPay}
+                    onClick={() =>
+                      run(async () => {
+                        const value =
+                          discKind === "percent"
+                            ? Math.round(Number(discVal) || 0)
+                            : Math.round(Number(discVal) * 100);
+                        return api(`/api/orders/${current.id}/discount`, {
+                          method: "POST",
+                          body: JSON.stringify({ type: discKind, value }),
+                        });
+                      })
+                    }
+                  >
+                    Aplicar
+                  </button>
+                  <button
+                    className="rowbtn"
+                    disabled={lockedPay || !current.discount}
+                    onClick={() =>
+                      run(async () =>
+                        api(`/api/orders/${current.id}/discount`, {
+                          method: "POST",
+                          body: JSON.stringify({ type: null, value: 0 }),
+                        })
+                      )
+                    }
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
               {useMap && destSpaces.length > 0 && (
                 <div className="ticket">
                   <p className="muted">Mover o juntar a otra mesa o cuenta</p>
