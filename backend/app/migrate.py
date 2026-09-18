@@ -107,6 +107,11 @@ STATEMENTS = [
     INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.12.0')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
     """,
+    "ALTER TABLE orders ADD COLUMN IF NOT EXISTS pending_tip_cents INT NOT NULL DEFAULT 0",
+    """
+    INSERT INTO hermes_meta (key, value) VALUES ('schema_version', '0.13.0')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    """,
 ]
 
 

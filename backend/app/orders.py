@@ -146,6 +146,7 @@ def order_out(bundle: dict) -> dict:
         "due_cents": max(0, total - paid),
         "refunded": bool(order.get("refunded_at")),
         "refunded_at": order["refunded_at"].isoformat() if order.get("refunded_at") else None,
+        "pending_tip_cents": max(0, int(order.get("pending_tip_cents") or 0)),
     }
 
 
@@ -171,6 +172,27 @@ def cds_ticket() -> dict:
     body = order_out(bundle)
     body["items"] = [i for i in body["items"] if i["status"] != "void"]
     return {"ticket": body}
+
+
+def set_cds_tip(tip_cents: int | None = None, tip_bps: int | None = None) -> dict:
+    payload = cds_ticket()
+    body = payload.get("ticket")
+    if not body:
+        raise ValueError("No hay ticket")
+    if body["status"] in {"closed", "void"}:
+        raise ValueError("La orden está cerrada")
+    total = body["precuenta"]["total_cents"]
+    if tip_bps is not None:
+        bps = max(0, min(10000, int(tip_bps)))
+        cents = total * bps // 10000
+    else:
+        cents = max(0, int(tip_cents or 0))
+    db.execute(
+        "UPDATE orders SET pending_tip_cents = %s WHERE id = %s",
+        (cents, body["id"]),
+    )
+    payload = cds_ticket()
+    return payload
 
 
 def list_open() -> list[dict]:

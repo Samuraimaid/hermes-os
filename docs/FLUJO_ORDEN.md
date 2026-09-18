@@ -29,6 +29,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 16. `POST /api/venue/config` `{ currency, tax_enabled, tax_bps }` — configuración de tienda. Cap `admin`. Nombre de tienda no se edita en el demo.
 17. `POST /api/products` · `PATCH /api/products/{id}` — carta del dueño (nombre, SKU opcional, precio, categoría, estación, disponible). No se borra: se deshabilita. Cap `admin`. El TPV muestra el SKU chico si existe. Sin stock.
 18. `POST /api/orders/{id}/name` `{ name }` — nombre en el ticket (Juan, Mesa 1-A). Cap `floor`. Se puede cambiar con pagos. Se ve en franja, CDS y KDS. Sin ficha de cliente.
+19. `POST /api/cds/tip` `{ tip_bps | tip_cents }` — propina pendiente del cliente (sin PIN). Sobre `precuenta.total_cents` (ya con IVA si está on). Al cobrar, el TPV manda ese `tip_cents` salvo que el cajero ponga otro.
 
 Por defecto `tax_enabled` es false: no se muestra IVA y el total es subtotal − descuento. Si el dueño lo enciende, se añade sobre (subtotal − descuento). No es factura fiscal.
 

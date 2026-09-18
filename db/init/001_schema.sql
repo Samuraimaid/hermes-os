@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS orders (
     queue_number    INT,
     dining_option   TEXT,
     guest_name      TEXT,
+    pending_tip_cents INT NOT NULL DEFAULT 0,
     notes           TEXT,
     discount_type   TEXT,
     discount_value  INT NOT NULL DEFAULT 0,

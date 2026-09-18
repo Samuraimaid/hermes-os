@@ -343,6 +343,53 @@ function CdsView() {
               <span>Total</span>
               <strong className="amt">{money(total)}</strong>
             </div>
+            {(ticket.pending_tip_cents || 0) > 0 && (
+              <div className="row">
+                <span className="label">Propina</span>
+                <strong className="amt">{money(ticket.pending_tip_cents)}</strong>
+              </div>
+            )}
+            <p className="muted" style={{ marginTop: 16 }}>
+              Propina (sobre el total{ticket.tax_enabled ? " con impuesto" : ""})
+            </p>
+            <div className="actions">
+              {[0, 1000, 1500].map((bps) => (
+                <button
+                  key={bps}
+                  className={
+                    (ticket.pending_tip_cents || 0) === Math.floor((total * bps) / 10000) ? "tab on" : "tab"
+                  }
+                  onClick={() => {
+                    api("/api/cds/tip", {
+                      method: "POST",
+                      body: JSON.stringify({ tip_bps: bps }),
+                    })
+                      .then((data) => setTicket(data.ticket || data))
+                      .catch(() => {});
+                  }}
+                >
+                  {bps === 0 ? "0%" : `${bps / 100}%`}
+                </button>
+              ))}
+            </div>
+            <p className="muted">Otro monto</p>
+            <input
+              className="field"
+              placeholder={amountText(0)}
+              onBlur={(e) => {
+                const cents = Math.round(Number(e.target.value) * 100);
+                if (!Number.isFinite(cents) || cents < 0) return;
+                api("/api/cds/tip", {
+                  method: "POST",
+                  body: JSON.stringify({ tip_cents: cents }),
+                })
+                  .then((data) => setTicket(data.ticket || data))
+                  .catch(() => {});
+              }}
+            />
+            {(ticket.pending_tip_cents || 0) > 0 && (
+              <p className="cds-total amt">A pagar {money(total + ticket.pending_tip_cents)}</p>
+            )}
           </div>
         </>
       )}
@@ -928,6 +975,8 @@ function FloorView({ canCash }) {
   const [selected, setSelected] = useState([]);
   const [destId, setDestId] = useState("");
   const [payMethod, setPayMethod] = useState("cash");
+  const [tipCents, setTipCents] = useState(0);
+  const [tipTouched, setTipTouched] = useState(false);
   const [dining, setDining] = useState("dine_in");
   const [discKind, setDiscKind] = useState("percent");
   const [discVal, setDiscVal] = useState("");
@@ -970,6 +1019,15 @@ function FloorView({ canCash }) {
   useEffect(() => {
     if (current?.dining_option) setDining(current.dining_option);
   }, [current?.id, current?.dining_option]);
+
+  useEffect(() => {
+    setTipTouched(false);
+    setTipCents(current?.pending_tip_cents || 0);
+  }, [current?.id]);
+
+  useEffect(() => {
+    if (!tipTouched) setTipCents(current?.pending_tip_cents || 0);
+  }, [current?.pending_tip_cents, tipTouched]);
 
   async function run(fn) {
     try {
@@ -1431,7 +1489,10 @@ function FloorView({ canCash }) {
       </div>
       {canCash && current && (
         <div className="pay-bar">
-          <strong className="amt">Total {money(due)}</strong>
+          <strong className="amt">
+            Total {money(due)}
+            {tipCents ? ` · propina ${money(tipCents)}` : ""}
+          </strong>
           <div className="actions">
             {["cash", "card", "transfer"].map((m) => (
               <button
@@ -1440,6 +1501,20 @@ function FloorView({ canCash }) {
                 onClick={() => setPayMethod(m)}
               >
                 {m === "cash" ? "Efectivo" : m === "card" ? "Tarjeta" : "Transfer"}
+              </button>
+            ))}
+          </div>
+          <div className="actions">
+            {[0, 10, 15].map((n) => (
+              <button
+                key={n}
+                className={!tipTouched && n === 0 && !tipCents ? "tab on" : tipTouched && n > 0 && tipCents === Math.round((due * n) / 100) ? "tab on" : "tab"}
+                onClick={() => {
+                  setTipTouched(true);
+                  setTipCents(Math.round((due * n) / 100));
+                }}
+              >
+                {n}%
               </button>
             ))}
           </div>
@@ -1460,7 +1535,7 @@ function FloorView({ canCash }) {
                   body: JSON.stringify({
                     method: payMethod,
                     amount_cents: due,
-                    tip_cents: 0,
+                    tip_cents: tipCents,
                   }),
                 });
                 return out.order || out;

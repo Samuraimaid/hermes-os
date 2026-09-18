@@ -69,6 +69,7 @@ Orden de commits (rama `main`):
 26. Tipo de pedido en Ticket de piso (CDS/KDS)
 27. Artículos admin: alta, precio, disponible, SKU opcional
 28. Nombre opcional en ticket abierto (franja, CDS, KDS)
+29. Propina pendiente desde CDS (0/10/15/otro); TPV puede anularla
 
 ### API útil
 

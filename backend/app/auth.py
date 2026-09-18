@@ -106,10 +106,9 @@ def cap_for_path(method: str, path: str) -> str | None:
         "/api/login",
         "/api/instance",
         "/api/logout",
-        "/api/cds",
         "/docs",
         "/openapi.json",
-    }:
+    } or path.startswith("/api/cds"):
         return None
     if not path.startswith("/api/"):
         return None

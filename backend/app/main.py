@@ -49,6 +49,11 @@ class PayIn(BaseModel):
     tip_cents: int = 0
 
 
+class CdsTipIn(BaseModel):
+    tip_cents: int | None = None
+    tip_bps: int | None = None
+
+
 class LoginIn(BaseModel):
     pin: str
 
@@ -226,6 +231,12 @@ def logout(request: Request):
 def cds():
     _need_seed()
     return _ok(order_svc.cds_ticket)
+
+
+@app.post("/api/cds/tip")
+def cds_tip(body: CdsTipIn):
+    _need_seed()
+    return _ok(order_svc.set_cds_tip, body.tip_cents, body.tip_bps)
 
 
 @app.get("/api/instance")
