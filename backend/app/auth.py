@@ -101,7 +101,15 @@ def logout(token: str | None) -> None:
 
 
 def cap_for_path(method: str, path: str) -> str | None:
-    if path in {"/health", "/api/login", "/api/instance", "/api/logout", "/docs", "/openapi.json"}:
+    if path in {
+        "/health",
+        "/api/login",
+        "/api/instance",
+        "/api/logout",
+        "/api/cds",
+        "/docs",
+        "/openapi.json",
+    }:
         return None
     if not path.startswith("/api/"):
         return None

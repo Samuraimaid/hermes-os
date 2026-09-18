@@ -21,6 +21,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 8. `POST /api/items/{id}/move` `{ to_space_id }` — el renglón cambia de cuenta. Si el destino no tiene orden abierta, se crea. Conserva status y `sent_at`; cocina no recibe un ticket nuevo.
 9. `POST /api/orders/{id}/merge` `{ onto_order_id }` — todos los ítems vivos pasan a la otra cuenta.
 10. `POST /api/items/{id}/void` — anula el renglón. Falla si hay pagos. Si no quedan ítems vivos, cierra el ticket. Cap `floor`.
+11. `GET /api/cds` — ticket activo para la pantalla cliente (sin PIN). Sin órdenes abiertas, `ticket: null`.
 
 Mover y juntar fallan si origen o destino ya tienen pagos. Recalculan el status de ambas; si el origen queda vacío, se cierra (libera la mesa). Solo entre espacios `table` o `tab`. Cap `floor`.
 

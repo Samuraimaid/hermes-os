@@ -27,7 +27,7 @@ Implementado hasta nomenclatura de UI y tema por perfil:
 - UI: Iniciar sesión, Artículo, Ticket, Recibo, Turno, Empleado, Tienda
 - Tema CSS por defecto del perfil (`docs/TEMAS.md`)
 
-Siguiente paso: descuento + impuesto interno, o CDS. No inventario ni factura fiscal.
+Siguiente paso: descuento + impuesto interno. No inventario ni factura fiscal.
 
 ## Arranque
 
@@ -55,4 +55,4 @@ PIN demo: `0000` dueño · `1111` mesero · `2222` cocina · `3333` caja · `444
 | `docs/GUIA_PRODUCTO.md` | Nombres de UI y orden de construcción |
 | `docs/TEMAS.md` | Temas CSS por perfil |
 | `backend/app/` | API |
-| `frontend/src/App.jsx` | Hub (piso, KDS, caja, kiosco) |
+| `frontend/src/App.jsx` | Hub (ventas, KDS, turno, kiosco, `/cds`) |

@@ -109,6 +109,30 @@ def order_out(bundle: dict) -> dict:
     }
 
 
+def cds_ticket() -> dict:
+    venue = _venue()
+    row = db.fetch_one(
+        """
+        SELECT o.id
+        FROM orders o
+        WHERE o.venue_id = %s AND o.status = ANY(%s)
+        ORDER BY (
+            SELECT COALESCE(MAX(i.id), 0) FROM order_items i WHERE i.order_id = o.id
+        ) DESC, o.id DESC
+        LIMIT 1
+        """,
+        (venue["id"], list(ACTIVE)),
+    )
+    if not row:
+        return {"ticket": None}
+    bundle = _load_order(row["id"])
+    if not bundle:
+        return {"ticket": None}
+    body = order_out(bundle)
+    body["items"] = [i for i in body["items"] if i["status"] != "void"]
+    return {"ticket": body}
+
+
 def list_open() -> list[dict]:
     venue = _venue()
     rows = db.fetch_all(

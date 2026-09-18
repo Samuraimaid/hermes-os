@@ -161,6 +161,12 @@ def logout(request: Request):
     return {"ok": True}
 
 
+@app.get("/api/cds")
+def cds():
+    _need_seed()
+    return _ok(order_svc.cds_ticket)
+
+
 @app.get("/api/instance")
 def instance():
     try:

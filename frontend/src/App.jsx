@@ -28,7 +28,14 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function isCdsPath() {
+  return window.location.pathname.replace(/\/+$/, "") === "/cds";
+}
+
 export default function App() {
+  if (isCdsPath()) {
+    return <CdsView />;
+  }
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("hermes_user") || "null");
@@ -132,6 +139,11 @@ export default function App() {
             Kiosco
           </button>
         )}
+        {caps.includes("admin") && (
+          <button className="tab" onClick={() => window.open("/cds", "hermes-cds")}>
+            Pantalla cliente
+          </button>
+        )}
         <button className="tab" onClick={leave}>
           Salir
         </button>
@@ -140,6 +152,78 @@ export default function App() {
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
       {view === "kiosko" && canKiosk && <KioskView />}
+    </main>
+  );
+}
+
+function CdsView() {
+  const [storeName, setStoreName] = useState("Hermes OS");
+  const [ticket, setTicket] = useState(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyTheme(inst.profile);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
+      })
+      .catch(() => applyTheme("restaurant"));
+
+    async function load() {
+      try {
+        const data = await api("/api/cds");
+        setTicket(data.ticket || null);
+      } catch {
+        setTicket(null);
+      } finally {
+        setReady(true);
+      }
+    }
+    load();
+    const id = setInterval(load, 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  const live = (ticket?.items || []).filter((i) => i.status !== "void");
+  const subtotal = ticket?.precuenta?.subtotal_cents || 0;
+
+  return (
+    <main className="cds">
+      <div className="kicker">{storeName}</div>
+      {!ready && <p className="muted">…</p>}
+      {ready && !ticket && (
+        <>
+          <h1>Bienvenido</h1>
+          <p className="tag">En un momento tomamos tu pedido.</p>
+        </>
+      )}
+      {ready && ticket && (
+        <>
+          <h1>{ticket.space?.name || `Ticket #${ticket.id}`}</h1>
+          <div className="cds-lines">
+            {live.length === 0 && <p className="muted">Preparando tu ticket…</p>}
+            {live.map((i) => (
+              <div className="cds-line" key={i.id}>
+                <span>
+                  {i.qty}× {i.name}
+                  {i.modifiers?.length ? ` (${i.modifiers.map((m) => m.name).join(", ")})` : ""}
+                </span>
+                <span>{money(i.price_cents * i.qty)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="cds-totals">
+            <div className="row">
+              <span className="label">Subtotal</span>
+              <strong>{money(subtotal)}</strong>
+            </div>
+            <div className="row cds-total">
+              <span>Total</span>
+              <strong>{money(subtotal)}</strong>
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }

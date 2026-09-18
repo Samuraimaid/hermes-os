@@ -146,7 +146,7 @@ Iniciar sesión (PIN)
 2. Temas CSS por perfil (`docs/TEMAS.md`) — default del perfil hecho  
 3. Pantalla Ventas ticket | carta | cobrar — hecho (void en el mismo corte)  
 4. Void de renglón + KDS tachado + colores de tiempo  
-5. Ruta CDS mínima  
+5. Ruta CDS mínima — hecho (artículos, subtotal, total; sin propina)  
 6. Descuento + impuesto (ticket interno)  
 7. Back office: resumen de ventas + lista de artículos  
 8. Reembolso y lista de recibos  
