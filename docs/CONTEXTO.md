@@ -67,11 +67,13 @@ Orden de commits (rama `main`):
 24. Tipografía TPV: Roboto 400/500/700, dinero tabular-nums
 25. Configuración admin: moneda + IVA (`/config`)
 26. Tipo de pedido en Ticket de piso (CDS/KDS)
+27. Artículos admin: alta, precio, disponible
 
 ### API útil
 
 - `POST /api/login` `{ pin }`
 - `GET /api/instance` `GET /api/spaces` `GET /api/products` `GET /api/orders`
+- `POST /api/products` `PATCH /api/products/{id}` (cap `admin`)
 - `POST /api/orders` `POST /api/orders/{id}/items` (`modifier_ids`) · `POST /api/orders/{id}/dining`
 - `POST /api/orders/{id}/send` `/deliver` `/close` `/pay`
 - `POST /api/items/{id}/move` `{ to_space_id }` · `POST /api/orders/{id}/merge` `{ onto_order_id }`

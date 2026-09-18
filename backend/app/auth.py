@@ -122,6 +122,8 @@ def cap_for_path(method: str, path: str) -> str | None:
         return "kds"
     if path.startswith("/api/sales"):
         return "cash"
+    if path.startswith("/api/products") and method != "GET":
+        return "admin"
     if path.startswith("/api/staff") or path.startswith("/api/venue"):
         return "admin"
     return "floor"

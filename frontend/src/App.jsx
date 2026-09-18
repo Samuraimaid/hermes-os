@@ -64,6 +64,10 @@ function isConfigPath() {
   return routePath() === "/config";
 }
 
+function isCatalogPath() {
+  return routePath() === "/articulos";
+}
+
 function hasCap(session, cap) {
   const caps = session?.caps || [];
   return caps.includes(cap) || caps.includes("admin");
@@ -96,6 +100,9 @@ export default function App() {
   }
   if (isConfigPath()) {
     return <ConfigScreen />;
+  }
+  if (isCatalogPath()) {
+    return <CatalogScreen />;
   }
   const [user, setUser] = useState(() => {
     try {
@@ -215,6 +222,11 @@ export default function App() {
             </button>
           )}
           {canAdmin && (
+            <button className={view === "articulos" ? "tab on" : "tab"} onClick={() => setView("articulos")}>
+              Artículos
+            </button>
+          )}
+          {canAdmin && (
             <button className={view === "config" ? "tab on" : "tab"} onClick={() => setView("config")}>
               Configuración
             </button>
@@ -237,6 +249,7 @@ export default function App() {
         <SalesView canRefund={canCash} canAdmin={canAdmin} />
       )}
       {view === "config" && canAdmin && <ConfigView />}
+      {view === "articulos" && canAdmin && <CatalogView />}
     </main>
   );
 }
@@ -491,6 +504,211 @@ function ConfigView() {
         Guardar
       </button>
     </section>
+  );
+}
+
+function CatalogScreen() {
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hermes_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [storeName, setStoreName] = useState("Hermes OS");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyTheme(inst.profile);
+        applyCurrency(inst);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
+      })
+      .catch(() => applyTheme("restaurant"));
+  }, []);
+
+  async function enter() {
+    try {
+      setError("");
+      const session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      localStorage.setItem("hermes_token", session.token);
+      localStorage.setItem("hermes_user", JSON.stringify(session));
+      if (!hasCap(session, "admin")) {
+        setError("Solo el dueño ve los artículos.");
+        return;
+      }
+      setUser(session);
+      setPin("");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function leave() {
+    api("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    setUser(null);
+    setPin("");
+  }
+
+  if (!user || !hasCap(user, "admin")) {
+    return (
+      <main className="shell">
+        <div className="kicker">{storeName} · Artículos</div>
+        <h1>Iniciar sesión</h1>
+        <p className="tag">PIN del dueño: 0000</p>
+        {error && <p className="err">{error}</p>}
+        <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
+        <button className="primary" onClick={enter}>
+          Iniciar sesión
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="shell wide">
+      <div className="kicker">
+        Tienda {storeName} · Empleado {user.name}
+      </div>
+      <div className="kds-bar">
+        <h1>Artículos</h1>
+        <button className="tab" onClick={leave}>
+          Salir
+        </button>
+      </div>
+      <CatalogView />
+    </main>
+  );
+}
+
+function CatalogView() {
+  const [items, setItems] = useState([]);
+  const [stations, setStations] = useState([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [category, setCategory] = useState("Bebidas");
+  const [stationId, setStationId] = useState("");
+  const [error, setError] = useState("");
+
+  async function load() {
+    const [inst, prods, sts] = await Promise.all([
+      api("/api/instance"),
+      api("/api/products"),
+      api("/api/stations"),
+    ]);
+    applyCurrency(inst);
+    setItems(prods);
+    setStations(sts);
+  }
+
+  useEffect(() => {
+    load().catch((e) => setError(e.message));
+  }, []);
+
+  async function create() {
+    try {
+      setError("");
+      const cents = Math.round(Number(price) * 100);
+      await api("/api/products", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          price_cents: cents,
+          category: category || null,
+          destination_station_id: stationId ? Number(stationId) : null,
+        }),
+      });
+      setName("");
+      setPrice("");
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function patch(id, body) {
+    try {
+      setError("");
+      await api(`/api/products/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <>
+      <section className="card">
+        <h2>Nuevo artículo</h2>
+        {error && <p className="err">{error}</p>}
+        <p className="muted">Nombre</p>
+        <input className="field" value={name} onChange={(e) => setName(e.target.value)} />
+        <p className="muted">Precio ({moneySymbol})</p>
+        <input className="field" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="45.00" />
+        <p className="muted">Categoría</p>
+        <input className="field" value={category} onChange={(e) => setCategory(e.target.value)} />
+        <p className="muted">Estación destino (opcional)</p>
+        <select className="field" value={stationId} onChange={(e) => setStationId(e.target.value)}>
+          <option value="">Ninguna</option>
+          {stations.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <button className="primary" onClick={create} disabled={!name || !price}>
+          Crear
+        </button>
+      </section>
+      <section className="card" style={{ marginTop: 18 }}>
+        <h2>Carta</h2>
+        {items.map((p) => (
+          <div className="row" key={p.id}>
+            <span>
+              {p.name}
+              <span className="muted">
+                {" · "}
+                {p.category || "—"}
+                {p.available ? "" : " · no disponible"}
+              </span>
+            </span>
+            <span>
+              <input
+                className="field"
+                style={{ width: 110, display: "inline-block", margin: "0 8px 0 0" }}
+                defaultValue={amountText(p.price_cents)}
+                key={`${p.id}-${p.price_cents}`}
+                onBlur={(e) => {
+                  const cents = Math.round(Number(e.target.value) * 100);
+                  if (Number.isFinite(cents) && cents !== p.price_cents) {
+                    patch(p.id, { price_cents: cents });
+                  }
+                }}
+              />
+              <span className="amt">{money(p.price_cents)}</span>
+              <label className="muted" style={{ marginLeft: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={p.available}
+                  onChange={(e) => patch(p.id, { available: e.target.checked })}
+                />{" "}
+                Disponible
+              </label>
+            </span>
+          </div>
+        ))}
+      </section>
+    </>
   );
 }
 
@@ -786,7 +1004,7 @@ function FloorView({ canCash }) {
   }
 
   const categories = [];
-  for (const p of products) {
+  for (const p of products.filter((item) => item.available !== false)) {
     const cat = p.category || "Artículos";
     const last = categories[categories.length - 1];
     if (!last || last.name !== cat) categories.push({ name: cat, items: [p] });
@@ -1689,7 +1907,7 @@ function KioskView() {
       <div className="grid">
         <section className="card">
           <h2>Carta</h2>
-          {products.map((p) => (
+          {products.filter((p) => p.available !== false).map((p) => (
             <button
               key={p.id}
               className="rowbtn"

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from app import auth
 from app import cash as cash_svc
+from app import catalog as catalog_svc
 from app import orders as order_svc
 from app.deployment import deployment_for
 from app.mechanisms import mechanism_for
@@ -78,6 +79,18 @@ class VenueConfigIn(BaseModel):
     currency: str | None = None
     tax_enabled: bool | None = None
     tax_bps: int | None = None
+
+
+class ProductIn(BaseModel):
+    name: str
+    price_cents: int
+    category: str | None = None
+    destination_station_id: int | None = None
+
+
+class ProductPatchIn(BaseModel):
+    price_cents: int | None = None
+    available: bool | None = None
 
 
 CURRENCY_SYMBOL = {"NIO": "C$", "USD": "$"}
@@ -230,7 +243,26 @@ def list_stations():
 
 @app.get("/api/products")
 def list_products():
-    return [product_out(p) for p in _need_seed()["products"]]
+    _need_seed()
+    return _ok(catalog_svc.list_products)
+
+
+@app.post("/api/products")
+def create_product(body: ProductIn):
+    _need_seed()
+    return _ok(
+        catalog_svc.create_product,
+        body.name,
+        body.price_cents,
+        body.category,
+        body.destination_station_id,
+    )
+
+
+@app.patch("/api/products/{product_id}")
+def patch_product(product_id: int, body: ProductPatchIn):
+    _need_seed()
+    return _ok(catalog_svc.update_product, product_id, body.price_cents, body.available)
 
 
 @app.get("/api/orders")
