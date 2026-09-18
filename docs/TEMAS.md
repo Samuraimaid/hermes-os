@@ -16,7 +16,7 @@ Variables comunes: `--hermes-bg-app`, `--hermes-bg-surface`, `--hermes-accent`, 
 
 ## restaurant — Fine Dining
 
-Uso: mantel, alta cocina, luz tenue.
+Uso: mantel, alta cocina, luz tenue. Tipografía: Roboto (no serif).
 
 ```css
 :root {

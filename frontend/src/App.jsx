@@ -284,30 +284,30 @@ function CdsView() {
                   {i.qty}× {i.name}
                   {i.modifiers?.length ? ` (${i.modifiers.map((m) => m.name).join(", ")})` : ""}
                 </span>
-                <span>{money(i.price_cents * i.qty)}</span>
+                <span className="amt">{money(i.price_cents * i.qty)}</span>
               </div>
             ))}
           </div>
           <div className="cds-totals">
             <div className="row">
               <span className="label">Subtotal</span>
-              <strong>{money(subtotal)}</strong>
+              <strong className="amt">{money(subtotal)}</strong>
             </div>
             {discount > 0 && (
               <div className="row">
                 <span className="label">Descuento</span>
-                <strong>−{money(discount)}</strong>
+                <strong className="amt">−{money(discount)}</strong>
               </div>
             )}
             {ticket.tax_enabled && (
               <div className="row">
                 <span className="label">Impuesto {ticket.tax_bps ? `${ticket.tax_bps / 100}%` : ""}</span>
-                <strong>{money(tax)}</strong>
+                <strong className="amt">{money(tax)}</strong>
               </div>
             )}
             <div className="row cds-total">
               <span>Total</span>
-              <strong>{money(total)}</strong>
+              <strong className="amt">{money(total)}</strong>
             </div>
           </div>
         </>
@@ -419,29 +419,29 @@ function SalesView({ canRefund = false, canAdmin = false }) {
         <h2>Resumen de ventas</h2>
         <div className="row">
           <span className="label">Ventas brutas</span>
-          <strong>{money(report.gross_cents)}</strong>
+          <strong className="amt">{money(report.gross_cents)}</strong>
         </div>
         <div className="row">
           <span className="label">Descuentos</span>
-          <strong>{money(report.discount_cents)}</strong>
+          <strong className="amt">{money(report.discount_cents)}</strong>
         </div>
         {(report.tax_enabled || report.tax_cents > 0) && (
           <div className="row">
             <span className="label">Impuestos</span>
-            <strong>{money(report.tax_cents)}</strong>
+            <strong className="amt">{money(report.tax_cents)}</strong>
           </div>
         )}
         <div className="row">
           <span className="label">Propinas</span>
-          <strong>{money(report.tips_cents)}</strong>
+          <strong className="amt">{money(report.tips_cents)}</strong>
         </div>
         <div className="row">
           <span className="label">Total cobrado</span>
-          <strong>{money(report.collected_cents)}</strong>
+          <strong className="amt">{money(report.collected_cents)}</strong>
         </div>
         <div className="row">
           <span className="label">Reembolsos</span>
-          <strong>{money(report.refund_cents)}</strong>
+          <strong className="amt">{money(report.refund_cents)}</strong>
         </div>
         <div className="row">
           <span className="label">Recibos</span>
@@ -480,7 +480,7 @@ function SalesView({ canRefund = false, canAdmin = false }) {
               {r.refunded ? " · reembolsado" : ""}
             </span>
             <span>
-              <strong>{money(r.total_cents)}</strong>
+              <strong className="amt">{money(r.total_cents)}</strong>
               {canRefund && r.collected_cents > 0 && !r.refunded && (
                 <button
                   type="button"
@@ -695,7 +695,7 @@ function FloorView({ canCash }) {
                           ? ` (${i.modifiers.map((m) => m.name).join(", ")})`
                           : ""}
                       </span>
-                      <span>{money(i.price_cents)}</span>
+                      <span className="amt">{money(i.price_cents)}</span>
                     </button>
                     {i.status !== "void" && (
                       <button
@@ -715,15 +715,24 @@ function FloorView({ canCash }) {
                 ))}
               </div>
               <p className="summary">
-                Subtotal {money(current.precuenta.subtotal_cents)}
-                {(current.precuenta.discount_cents || 0) > 0
-                  ? ` · descuento −${money(current.precuenta.discount_cents)}`
-                  : ""}
-                {current.tax_enabled
-                  ? ` · impuesto ${(current.tax_bps || 0) / 100}% ${money(current.precuenta.tax_cents || 0)}`
-                  : ""}
+                Subtotal <span className="amt">{money(current.precuenta.subtotal_cents)}</span>
+                {(current.precuenta.discount_cents || 0) > 0 ? (
+                  <>
+                    {" · descuento −"}
+                    <span className="amt">{money(current.precuenta.discount_cents)}</span>
+                  </>
+                ) : null}
+                {current.tax_enabled ? (
+                  <>
+                    {` · impuesto ${(current.tax_bps || 0) / 100}% `}
+                    <span className="amt">{money(current.precuenta.tax_cents || 0)}</span>
+                  </>
+                ) : null}
+                {" · total "}
+                <span className="amt">
+                  {money(current.precuenta.total_cents ?? current.precuenta.subtotal_cents)}
+                </span>
                 {" · "}
-                total {money(current.precuenta.total_cents ?? current.precuenta.subtotal_cents)} ·{" "}
                 {current.precuenta.item_count} artículos
               </p>
               {current.tax_enabled && (
@@ -956,7 +965,7 @@ function FloorView({ canCash }) {
       </div>
       {canCash && current && (
         <div className="pay-bar">
-          <strong>Total {money(due)}</strong>
+          <strong className="amt">Total {money(due)}</strong>
           <div className="actions">
             {["cash", "card", "transfer"].map((m) => (
               <button

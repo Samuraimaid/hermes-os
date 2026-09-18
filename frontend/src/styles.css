@@ -63,12 +63,10 @@ html[data-theme="convenience"] {
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 body {
-  font-family: system-ui, "Segoe UI", sans-serif;
+  font-family: "Roboto", sans-serif;
+  font-weight: 400;
   background: var(--hermes-bg-app);
   color: var(--hermes-text-main);
-}
-html[data-theme="restaurant"] body {
-  font-family: Georgia, "Times New Roman", serif;
 }
 
 .shell { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
@@ -78,7 +76,7 @@ html[data-theme="restaurant"] body {
   gap: 8px 16px; margin-bottom: 10px;
 }
 .app-head .tabs { margin: 0; }
-.tpv-title { font-size: 22px; margin: 2px 0 0; }
+.tpv-title { font-size: 18px; margin: 2px 0 0; font-weight: 700; }
 .tpv-shell .tag { margin: 0 0 10px; font-size: 13px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .pos {
@@ -92,7 +90,7 @@ html[data-theme="restaurant"] body {
   .pos { grid-template-columns: 1fr; }
 }
 .map-strip { margin-top: 0; padding: 10px 12px; }
-.map-strip h2 { margin: 0 0 6px; font-size: 13px; }
+.map-strip h2 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
 .map-strip .tiles { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
 .map-strip .tile { aspect-ratio: auto; min-height: 38px; padding: 4px 6px; font-size: 13px; }
 .map-strip .tile .meta { font-size: 10px; }
@@ -134,7 +132,7 @@ html[data-theme="restaurant"] body {
   background: var(--hermes-bg-app);
   color: var(--hermes-text-main);
 }
-.cds h1 { font-size: 48px; margin: 8px 0 28px; }
+.cds h1 { font-size: 18px; margin: 8px 0 20px; font-weight: 700; }
 .cds-lines { margin-top: 8px; }
 .cds-line {
   display: flex;
@@ -172,7 +170,7 @@ html[data-theme="restaurant"] body {
 @media (orientation: portrait) {
   .kds-rotate { display: block; }
 }
-h2 { font-size: 16px; margin: 0 0 12px; }
+h2 { font-size: 16px; margin: 0 0 12px; font-weight: 700; }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .rowbtn, .primary {
   font: inherit; cursor: pointer; text-align: left;
@@ -189,8 +187,14 @@ h2 { font-size: 16px; margin: 0 0 12px; }
 .primary:hover { background: var(--hermes-accent-hover); border-color: var(--hermes-accent-hover); }
 .muted { color: var(--hermes-text-muted); font-size: 13px; }
 .kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--hermes-text-muted); }
-h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
-.tpv-shell h1.tpv-title { font-size: 22px; margin: 2px 0 0; }
+h1 { font-size: 18px; margin: 8px 0 0; font-weight: 700; }
+.tpv-shell h1.tpv-title { font-size: 18px; margin: 2px 0 0; }
+.amt {
+  font-family: "Roboto", sans-serif;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
 .tag { margin: 8px 0 28px; color: var(--hermes-text-muted); font-style: italic; }
 .card {
   background: var(--hermes-bg-surface);
