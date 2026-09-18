@@ -23,6 +23,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 10. `POST /api/items/{id}/void` — anula el renglón. Falla si hay pagos. Si no quedan ítems vivos, cierra el ticket. Cap `floor`.
 11. `GET /api/cds` — ticket activo para la pantalla cliente (sin PIN). Sin órdenes abiertas, `ticket: null`.
 12. `POST /api/orders/{id}/discount` `{ type: percent | amount | null, value }` — un descuento por cuenta. `percent` es 0–100; `amount` va en centavos. Falla si hay pagos. Cap `floor`.
+13. `GET /api/sales/today` — resumen del día y lista de recibos (órdenes `closed`). Cap `admin`. Solo lectura.
 
 La precuenta trae `subtotal_cents`, `discount_cents` y `total_cents`. `due_cents` usa el total ya descontado. CDS muestra lo mismo.
 

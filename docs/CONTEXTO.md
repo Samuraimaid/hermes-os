@@ -60,6 +60,7 @@ Orden de commits (rama `main`):
 17. CDS: ruta `/cds` + `GET /api/cds`
 18. KDS a pantalla completa `/kds` + color por tiempo
 19. Descuento por cuenta (% o monto)
+20. Back office mínimo: `/ventas` + `GET /api/sales/today`
 
 ### API útil
 
@@ -71,6 +72,7 @@ Orden de commits (rama `main`):
 - `POST /api/items/{id}/void`
 - `POST /api/orders/{id}/discount` `{ type, value }`
 - `GET /api/cds` (sin PIN; ticket activo)
+- `GET /api/sales/today` (cap `admin`)
 - `GET /api/kds` `POST /api/items/{id}/bump`
 - `GET|POST /api/shift` open/close
 

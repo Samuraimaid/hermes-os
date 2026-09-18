@@ -52,6 +52,75 @@ def _payments(shift_id: int) -> list[dict]:
     )
 
 
+def day_report() -> dict:
+    venue = _venue()
+    tz = venue.get("timezone") or "UTC"
+    rows = db.fetch_all(
+        """
+        SELECT id FROM orders
+        WHERE venue_id = %s
+          AND status = 'closed'
+          AND closed_at IS NOT NULL
+          AND (closed_at AT TIME ZONE %s)::date = (now() AT TIME ZONE %s)::date
+        ORDER BY closed_at
+        """,
+        (venue["id"], tz, tz),
+    )
+    receipts = []
+    gross = discount = tips = collected = 0
+    for row in rows:
+        bundle = _load_order(row["id"])
+        if not bundle:
+            continue
+        body = order_out(bundle)
+        pays = db.fetch_all(
+            """
+            SELECT method, amount_cents, tip_cents
+            FROM payments WHERE order_id = %s ORDER BY id
+            """,
+            (row["id"],),
+        )
+        methods = []
+        rec_tips = 0
+        rec_paid = 0
+        for p in pays:
+            rec_paid += p["amount_cents"] or 0
+            rec_tips += p.get("tip_cents") or 0
+            if p["method"] not in methods:
+                methods.append(p["method"])
+        pc = body["precuenta"]
+        gross += pc.get("subtotal_cents") or 0
+        discount += pc.get("discount_cents") or 0
+        tips += rec_tips
+        collected += rec_paid
+        space = body.get("space")
+        receipts.append(
+            {
+                "id": body["id"],
+                "closed_at": bundle["order"]["closed_at"].isoformat()
+                if bundle["order"].get("closed_at")
+                else None,
+                "space": {"key": space["key"], "name": space["name"]} if space else None,
+                "subtotal_cents": pc.get("subtotal_cents") or 0,
+                "discount_cents": pc.get("discount_cents") or 0,
+                "total_cents": pc.get("total_cents") or 0,
+                "collected_cents": rec_paid,
+                "tips_cents": rec_tips,
+                "methods": methods,
+            }
+        )
+    day = db.fetch_one("SELECT (now() AT TIME ZONE %s)::date AS d", (tz,))
+    return {
+        "date": str(day["d"]) if day else None,
+        "gross_cents": gross,
+        "discount_cents": discount,
+        "tips_cents": tips,
+        "collected_cents": collected,
+        "receipt_count": len(receipts),
+        "receipts": receipts,
+    }
+
+
 def current_shift() -> dict | None:
     venue = _venue()
     row = db.fetch_one(

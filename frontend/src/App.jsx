@@ -40,6 +40,10 @@ function isKdsPath() {
   return routePath() === "/kds";
 }
 
+function isSalesPath() {
+  return routePath() === "/ventas";
+}
+
 function hasCap(session, cap) {
   const caps = session?.caps || [];
   return caps.includes(cap) || caps.includes("admin");
@@ -66,6 +70,9 @@ export default function App() {
   }
   if (isKdsPath()) {
     return <KdsScreen />;
+  }
+  if (isSalesPath()) {
+    return <SalesScreen />;
   }
   const [user, setUser] = useState(() => {
     try {
@@ -95,6 +102,7 @@ export default function App() {
   const canKds = caps.includes("kds") || caps.includes("admin");
   const canCash = caps.includes("cash") || caps.includes("admin");
   const canKiosk = caps.includes("kiosk") || caps.includes("admin");
+  const canAdmin = caps.includes("admin");
 
   async function enter() {
     try {
@@ -172,7 +180,12 @@ export default function App() {
             Kiosco
           </button>
         )}
-        {caps.includes("admin") && (
+        {canAdmin && (
+          <button className={view === "ventas" ? "tab on" : "tab"} onClick={() => setView("ventas")}>
+            Resumen de ventas
+          </button>
+        )}
+        {canAdmin && (
           <button className="tab" onClick={() => window.open("/cds", "hermes-cds")}>
             Pantalla cliente
           </button>
@@ -185,6 +198,7 @@ export default function App() {
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
       {view === "kiosko" && canKiosk && <KioskView />}
+      {view === "ventas" && canAdmin && <SalesView />}
     </main>
   );
 }
@@ -266,6 +280,146 @@ function CdsView() {
         </>
       )}
     </main>
+  );
+}
+
+const PAY_LABEL = { cash: "Efectivo", card: "Tarjeta", transfer: "Transfer", other: "Otro" };
+
+function SalesScreen() {
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("hermes_user") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [storeName, setStoreName] = useState("Hermes OS");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/instance")
+      .then((inst) => {
+        applyTheme(inst.profile);
+        setStoreName(inst.venue?.name || inst.name || "Hermes OS");
+      })
+      .catch(() => applyTheme("restaurant"));
+  }, []);
+
+  async function enter() {
+    try {
+      setError("");
+      const session = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      });
+      localStorage.setItem("hermes_token", session.token);
+      localStorage.setItem("hermes_user", JSON.stringify(session));
+      if (!hasCap(session, "admin")) {
+        setError("Solo el dueño ve el resumen de ventas.");
+        return;
+      }
+      setUser(session);
+      setPin("");
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function leave() {
+    api("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("hermes_token");
+    localStorage.removeItem("hermes_user");
+    setUser(null);
+    setPin("");
+  }
+
+  if (!user || !hasCap(user, "admin")) {
+    return (
+      <main className="shell">
+        <div className="kicker">{storeName} · Resumen de ventas</div>
+        <h1>Iniciar sesión</h1>
+        <p className="tag">PIN del dueño: 0000</p>
+        {error && <p className="err">{error}</p>}
+        <input className="field" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="PIN" />
+        <button className="primary" onClick={enter}>
+          Iniciar sesión
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="shell wide">
+      <div className="kicker">
+        Tienda {storeName} · Empleado {user.name}
+      </div>
+      <div className="kds-bar">
+        <h1>Ventas</h1>
+        <button className="tab" onClick={leave}>
+          Salir
+        </button>
+      </div>
+      <SalesView />
+    </main>
+  );
+}
+
+function SalesView() {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api("/api/sales/today")
+      .then(setReport)
+      .catch((e) => setError(e.message));
+  }, []);
+
+  if (error) return <p className="err">{error}</p>;
+  if (!report) return <p className="muted">Cargando resumen…</p>;
+
+  return (
+    <>
+      <p className="tag">Día {report.date}. Solo lectura. El recibo no es factura fiscal.</p>
+      <section className="card">
+        <h2>Resumen de ventas</h2>
+        <div className="row">
+          <span className="label">Ventas brutas</span>
+          <strong>{money(report.gross_cents)}</strong>
+        </div>
+        <div className="row">
+          <span className="label">Descuentos</span>
+          <strong>{money(report.discount_cents)}</strong>
+        </div>
+        <div className="row">
+          <span className="label">Propinas</span>
+          <strong>{money(report.tips_cents)}</strong>
+        </div>
+        <div className="row">
+          <span className="label">Total cobrado</span>
+          <strong>{money(report.collected_cents)}</strong>
+        </div>
+        <div className="row">
+          <span className="label">Recibos</span>
+          <strong>{report.receipt_count}</strong>
+        </div>
+      </section>
+      <section className="card" style={{ marginTop: 18 }}>
+        <h2>Recibos del día</h2>
+        {report.receipts.length === 0 && <p className="muted">Aún no hay recibos cerrados hoy.</p>}
+        {report.receipts.map((r) => (
+          <div className="row" key={r.id}>
+            <span>
+              {r.space?.name || `Ticket #${r.id}`}
+              {r.methods?.length
+                ? ` · ${r.methods.map((m) => PAY_LABEL[m] || m).join(" + ")}`
+                : " · sin cobro"}
+            </span>
+            <strong>{money(r.total_cents)}</strong>
+          </div>
+        ))}
+      </section>
+    </>
   );
 }
 

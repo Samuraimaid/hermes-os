@@ -281,6 +281,12 @@ def kds_board():
     return _ok(order_svc.kds_board)
 
 
+@app.get("/api/sales/today")
+def sales_today():
+    _need_seed()
+    return _ok(cash_svc.day_report)
+
+
 @app.get("/api/shift")
 def get_shift():
     _need_seed()

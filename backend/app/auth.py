@@ -120,7 +120,7 @@ def cap_for_path(method: str, path: str) -> str | None:
         return "kds"
     if path.startswith("/api/items/") and path.endswith("/bump"):
         return "kds"
-    if path.startswith("/api/staff"):
+    if path.startswith("/api/staff") or path.startswith("/api/sales"):
         return "admin"
     return "floor"
 
