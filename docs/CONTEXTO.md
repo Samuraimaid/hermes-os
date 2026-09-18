@@ -67,7 +67,7 @@ Orden de commits (rama `main`):
 24. Tipografía TPV: Roboto 400/500/700, dinero tabular-nums
 25. Configuración admin: moneda + IVA (`/config`)
 26. Tipo de pedido en Ticket de piso (CDS/KDS)
-27. Artículos admin: alta, precio, disponible
+27. Artículos admin: alta, precio, disponible, SKU opcional
 
 ### API útil
 

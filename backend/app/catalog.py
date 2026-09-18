@@ -32,11 +32,17 @@ def list_products() -> list[dict]:
     return [product_out(r) for r in rows]
 
 
+def _sku(value: str | None) -> str | None:
+    text = (value or "").strip()
+    return text or None
+
+
 def create_product(
     name: str,
     price_cents: int,
     category: str | None = None,
     destination_station_id: int | None = None,
+    sku: str | None = None,
 ) -> dict:
     venue = _venue()
     title = (name or "").strip()
@@ -60,13 +66,13 @@ def create_product(
     row = db.fetch_one(
         """
         INSERT INTO products (
-            venue_id, name, category, price_cents, destination_station_id,
+            venue_id, sku, name, category, price_cents, destination_station_id,
             sold_in_sala, sold_in_barra, sold_in_mostrador, available, sort
         )
-        VALUES (%s, %s, %s, %s, %s, TRUE, FALSE, TRUE, TRUE, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, TRUE, FALSE, TRUE, TRUE, %s)
         RETURNING id
         """,
-        (venue["id"], title, (category or "").strip() or None, price, dest, sort_row["n"]),
+        (venue["id"], _sku(sku), title, (category or "").strip() or None, price, dest, sort_row["n"]),
     )
     loaded = _load_product(row["id"])
     assert loaded
@@ -77,6 +83,7 @@ def update_product(
     product_id: int,
     price_cents: int | None = None,
     available: bool | None = None,
+    sku: str | None = None,
 ) -> dict:
     venue = _venue()
     row = db.fetch_one(
@@ -92,6 +99,8 @@ def update_product(
         db.execute("UPDATE products SET price_cents = %s WHERE id = %s", (price, product_id))
     if available is not None:
         db.execute("UPDATE products SET available = %s WHERE id = %s", (bool(available), product_id))
+    if sku is not None:
+        db.execute("UPDATE products SET sku = %s WHERE id = %s", (_sku(sku), product_id))
     loaded = _load_product(product_id)
     assert loaded
     return product_out(loaded)

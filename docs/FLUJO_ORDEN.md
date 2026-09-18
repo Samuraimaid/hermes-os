@@ -27,7 +27,7 @@ Una orden nace en una **unidad** del rubro (mesa, taburete, turno, línea o caja
 14. `POST /api/venue/tax` `{ enabled, bps }` — impuesto opcional de la tienda. `bps` 1500 = 15%. Cap `admin`. No toca cuentas con pagos.
 15. `POST /api/orders/{id}/refund` — reembolsa cobro + propina al método original (o `refund` si hubo varios). El recibo queda `refunded`; no se edita el ticket. Cap `cash`. Requiere turno abierto.
 16. `POST /api/venue/config` `{ currency, tax_enabled, tax_bps }` — configuración de tienda. Cap `admin`. Nombre de tienda no se edita en el demo.
-17. `POST /api/products` · `PATCH /api/products/{id}` — carta del dueño (nombre, precio, categoría, estación, disponible). No se borra: se deshabilita. Cap `admin`.
+17. `POST /api/products` · `PATCH /api/products/{id}` — carta del dueño (nombre, SKU opcional, precio, categoría, estación, disponible). No se borra: se deshabilita. Cap `admin`. El TPV muestra el SKU chico si existe. Sin stock.
 
 Por defecto `tax_enabled` es false: no se muestra IVA y el total es subtotal − descuento. Si el dueño lo enciende, se añade sobre (subtotal − descuento). No es factura fiscal.
 

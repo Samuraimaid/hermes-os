@@ -595,6 +595,7 @@ function CatalogView() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("Bebidas");
   const [stationId, setStationId] = useState("");
+  const [sku, setSku] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -623,10 +624,12 @@ function CatalogView() {
           price_cents: cents,
           category: category || null,
           destination_station_id: stationId ? Number(stationId) : null,
+          sku: sku || null,
         }),
       });
       setName("");
       setPrice("");
+      setSku("");
       await load();
     } catch (e) {
       setError(e.message);
@@ -653,6 +656,8 @@ function CatalogView() {
         {error && <p className="err">{error}</p>}
         <p className="muted">Nombre</p>
         <input className="field" value={name} onChange={(e) => setName(e.target.value)} />
+        <p className="muted">SKU (opcional)</p>
+        <input className="field" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="BEB-01" />
         <p className="muted">Precio ({moneySymbol})</p>
         <input className="field" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="45.00" />
         <p className="muted">Categoría</p>
@@ -677,10 +682,22 @@ function CatalogView() {
             <span>
               {p.name}
               <span className="muted">
+                {p.sku ? ` · ${p.sku}` : ""}
                 {" · "}
                 {p.category || "—"}
                 {p.available ? "" : " · no disponible"}
               </span>
+              <input
+                className="field"
+                style={{ width: 110, display: "block", marginTop: 4 }}
+                defaultValue={p.sku || ""}
+                key={`${p.id}-sku-${p.sku || ""}`}
+                placeholder="SKU"
+                onBlur={(e) => {
+                  const next = e.target.value.trim();
+                  if (next !== (p.sku || "")) patch(p.id, { sku: next });
+                }}
+              />
             </span>
             <span>
               <input
@@ -1332,8 +1349,11 @@ function FloorView({ canCash }) {
                       );
                     }}
                   >
-                    <strong>{p.name}</strong>
-                    <span>{money(p.price_cents)}</span>
+                    <span>
+                      <strong>{p.name}</strong>
+                      {p.sku ? <span className="sku">{p.sku}</span> : null}
+                    </span>
+                    <span className="amt">{money(p.price_cents)}</span>
                   </button>
                 ))}
               </div>
@@ -1918,8 +1938,11 @@ function KioskView() {
                 } else addLine(p, []);
               }}
             >
-              <strong>{p.name}</strong>
-              <span>{money(p.price_cents)}</span>
+              <span>
+                <strong>{p.name}</strong>
+                {p.sku ? <span className="sku">{p.sku}</span> : null}
+              </span>
+              <span className="amt">{money(p.price_cents)}</span>
             </button>
           ))}
           {pending && (

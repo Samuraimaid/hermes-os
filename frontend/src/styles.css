@@ -179,6 +179,13 @@ h2 { font-size: 16px; margin: 0 0 12px; font-weight: 700; }
   padding: 10px 12px; display: flex; justify-content: space-between; gap: 8px; width: 100%;
 }
 .rowbtn:hover { background: var(--hermes-touch-feedback); }
+.sku {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--hermes-text-muted);
+  margin-top: 2px;
+}
 .rowbtn:disabled { opacity: 0.45; cursor: not-allowed; }
 .primary {
   background: var(--hermes-accent); color: var(--hermes-bg-app);

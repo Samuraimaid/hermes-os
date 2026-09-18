@@ -86,11 +86,13 @@ class ProductIn(BaseModel):
     price_cents: int
     category: str | None = None
     destination_station_id: int | None = None
+    sku: str | None = None
 
 
 class ProductPatchIn(BaseModel):
     price_cents: int | None = None
     available: bool | None = None
+    sku: str | None = None
 
 
 CURRENCY_SYMBOL = {"NIO": "C$", "USD": "$"}
@@ -256,13 +258,14 @@ def create_product(body: ProductIn):
         body.price_cents,
         body.category,
         body.destination_station_id,
+        body.sku,
     )
 
 
 @app.patch("/api/products/{product_id}")
 def patch_product(product_id: int, body: ProductPatchIn):
     _need_seed()
-    return _ok(catalog_svc.update_product, product_id, body.price_cents, body.available)
+    return _ok(catalog_svc.update_product, product_id, body.price_cents, body.available, body.sku)
 
 
 @app.get("/api/orders")
