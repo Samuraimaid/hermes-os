@@ -70,15 +70,26 @@ class TaxIn(BaseModel):
     bps: int = 1500
 
 
+CURRENCY_SYMBOL = {"NIO": "C$", "USD": "$"}
+
+
 def current_profile() -> str:
     profile = settings.hermes_profile.strip().lower()
     return profile if profile in PROFILES else "restaurant"
+
+
+def currency_pair() -> tuple[str, str]:
+    code = (settings.hermes_currency or "NIO").strip().upper()
+    if code not in CURRENCY_SYMBOL:
+        code = "NIO"
+    return code, CURRENCY_SYMBOL[code]
 
 
 def instance_payload(seed: dict | None = None) -> dict:
     profile = current_profile()
     modules = resolve_modules(profile, settings.hermes_modules)
     mech = mechanism_for(profile)
+    currency, symbol = currency_pair()
     payload = {
         "name": settings.app_name,
         "env": settings.app_env,
@@ -89,6 +100,8 @@ def instance_payload(seed: dict | None = None) -> dict:
         "deployment": deployment_for(settings.hermes_deployment),
         "tagline": "El mensaje llega.",
         "database": bool(settings.database_url),
+        "currency": currency,
+        "symbol": symbol,
     }
     if seed and seed.get("venue"):
         payload["venue"] = {
@@ -97,6 +110,8 @@ def instance_payload(seed: dict | None = None) -> dict:
             "slug": seed["venue"]["slug"],
             "tax_enabled": bool(seed["venue"].get("tax_enabled")),
             "tax_bps": int(seed["venue"].get("tax_bps") or 0),
+            "currency": currency,
+            "symbol": symbol,
         }
         payload["counts"] = {
             "spaces": len(seed.get("spaces") or []),

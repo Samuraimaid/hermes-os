@@ -72,22 +72,32 @@ html[data-theme="restaurant"] body {
 }
 
 .shell { max-width: 720px; margin: 0 auto; padding: 48px 24px 64px; }
-.shell.wide { max-width: 1200px; padding-bottom: 96px; }
+.shell.wide { max-width: 1200px; padding: 16px 20px 88px; }
+.app-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 8px 16px; margin-bottom: 10px;
+}
+.app-head .tabs { margin: 0; }
+.tpv-title { font-size: 22px; margin: 2px 0 0; }
+.tpv-shell .tag { margin: 0 0 10px; font-size: 13px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 .pos {
   display: grid;
   grid-template-columns: minmax(260px, 1.1fr) minmax(280px, 1.4fr);
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 10px;
+  min-height: 52vh;
 }
 @media (max-width: 860px) {
   .pos { grid-template-columns: 1fr; }
 }
-.map-strip { margin-top: 0; }
-.map-strip .tiles { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
-.map-strip .tile { aspect-ratio: auto; min-height: 52px; }
-.zones.strip { display: flex; flex-wrap: wrap; gap: 16px; }
-.zones.strip > div { flex: 1; min-width: 200px; }
+.map-strip { margin-top: 0; padding: 10px 12px; }
+.map-strip h2 { margin: 0 0 6px; font-size: 13px; }
+.map-strip .tiles { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 6px; }
+.map-strip .tile { aspect-ratio: auto; min-height: 38px; padding: 4px 6px; font-size: 13px; }
+.map-strip .tile .meta { font-size: 10px; }
+.zones.strip { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.zones.strip > div { flex: 1; min-width: 160px; }
 .article-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -112,6 +122,9 @@ html[data-theme="restaurant"] body {
   border-radius: var(--hermes-radius);
 }
 .pay-bar .primary { margin-top: 0; width: auto; min-width: 140px; }
+.pay-bar .primary.charge {
+  min-width: 220px; font-size: 20px; padding: 14px 28px; letter-spacing: 0.04em;
+}
 
 .cds {
   min-height: 100vh;
@@ -177,6 +190,7 @@ h2 { font-size: 16px; margin: 0 0 12px; }
 .muted { color: var(--hermes-text-muted); font-size: 13px; }
 .kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 12px; color: var(--hermes-text-muted); }
 h1 { font-size: 42px; margin: 8px 0 0; font-weight: 700; }
+.tpv-shell h1.tpv-title { font-size: 22px; margin: 2px 0 0; }
 .tag { margin: 8px 0 28px; color: var(--hermes-text-muted); font-style: italic; }
 .card {
   background: var(--hermes-bg-surface);

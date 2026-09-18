@@ -13,6 +13,22 @@ function applyTheme(profile) {
   document.documentElement.dataset.theme = THEME_BY_PROFILE[key] || "restaurant";
 }
 
+const CURRENCY_SYMBOL = { NIO: "C$", USD: "$" };
+let moneySymbol = "C$";
+
+function applyCurrency(inst) {
+  const code = (inst?.currency || inst?.venue?.currency || "NIO").toUpperCase();
+  moneySymbol = inst?.symbol || CURRENCY_SYMBOL[code] || "C$";
+}
+
+function amountText(cents) {
+  return ((Number(cents) || 0) / 100).toFixed(2);
+}
+
+function money(cents) {
+  return `${moneySymbol} ${amountText(cents)}`;
+}
+
 async function api(path, opts = {}) {
   const token = localStorage.getItem("hermes_token");
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
@@ -91,6 +107,7 @@ export default function App() {
       .then((inst) => {
         setInstance(inst);
         applyTheme(inst.profile);
+        applyCurrency(inst);
       })
       .catch(() => applyTheme("restaurant"));
   }, []);
@@ -153,47 +170,53 @@ export default function App() {
     );
   }
 
+  const waiterOnly = user.role === "waiter";
+
   return (
-    <main className="shell wide">
-      <div className="kicker">
-        Tienda {storeName} · Empleado {user.name}
-      </div>
-      <h1>Hermes OS</h1>
-      <div className="tabs">
-        {canFloor && (
-          <button className={view === "piso" ? "tab on" : "tab"} onClick={() => setView("piso")}>
-            Ventas
+    <main className={`shell wide${view === "piso" ? " tpv-shell" : ""}`}>
+      <header className="app-head">
+        <div>
+          <div className="kicker">
+            Tienda {storeName} · Empleado {user.name}
+          </div>
+          <h1 className={view === "piso" ? "tpv-title" : ""}>{view === "piso" ? "Ventas" : "Hermes OS"}</h1>
+        </div>
+        <div className="tabs">
+          {canFloor && (
+            <button className={view === "piso" ? "tab on" : "tab"} onClick={() => setView("piso")}>
+              Ventas
+            </button>
+          )}
+          {!waiterOnly && canKds && (
+            <button className={view === "kds" ? "tab on" : "tab"} onClick={() => setView("kds")}>
+              Estaciones
+            </button>
+          )}
+          {!waiterOnly && canCash && (
+            <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
+              Turno
+            </button>
+          )}
+          {!waiterOnly && canKiosk && (
+            <button className={view === "kiosko" ? "tab on" : "tab"} onClick={() => setView("kiosko")}>
+              Kiosco
+            </button>
+          )}
+          {canAdmin && (
+            <button className={view === "ventas" ? "tab on" : "tab"} onClick={() => setView("ventas")}>
+              Resumen de ventas
+            </button>
+          )}
+          {canAdmin && (
+            <button className="tab" onClick={() => window.open("/cds", "hermes-cds")}>
+              Pantalla cliente
+            </button>
+          )}
+          <button className="tab" onClick={leave}>
+            Salir
           </button>
-        )}
-        {canKds && (
-          <button className={view === "kds" ? "tab on" : "tab"} onClick={() => setView("kds")}>
-            Estaciones
-          </button>
-        )}
-        {canCash && (
-          <button className={view === "caja" ? "tab on" : "tab"} onClick={() => setView("caja")}>
-            Turno
-          </button>
-        )}
-        {canKiosk && (
-          <button className={view === "kiosko" ? "tab on" : "tab"} onClick={() => setView("kiosko")}>
-            Kiosco
-          </button>
-        )}
-        {canAdmin && (
-          <button className={view === "ventas" ? "tab on" : "tab"} onClick={() => setView("ventas")}>
-            Resumen de ventas
-          </button>
-        )}
-        {canAdmin && (
-          <button className="tab" onClick={() => window.open("/cds", "hermes-cds")}>
-            Pantalla cliente
-          </button>
-        )}
-        <button className="tab" onClick={leave}>
-          Salir
-        </button>
-      </div>
+        </div>
+      </header>
       {view === "piso" && canFloor && <FloorView canCash={canCash} />}
       {view === "kds" && canKds && <KdsView />}
       {view === "caja" && canCash && <CashView />}
@@ -212,6 +235,7 @@ function CdsView() {
     api("/api/instance")
       .then((inst) => {
         applyTheme(inst.profile);
+        applyCurrency(inst);
         setStoreName(inst.venue?.name || inst.name || "Hermes OS");
       })
       .catch(() => applyTheme("restaurant"));
@@ -308,6 +332,7 @@ function SalesScreen() {
     api("/api/instance")
       .then((inst) => {
         applyTheme(inst.profile);
+        applyCurrency(inst);
         setStoreName(inst.venue?.name || inst.name || "Hermes OS");
       })
       .catch(() => applyTheme("restaurant"));
@@ -475,6 +500,7 @@ function FloorView({ canCash }) {
       api("/api/products"),
       api("/api/orders"),
     ]);
+    applyCurrency(inst);
     setInstance(inst);
     setSpaces(sp);
     setProducts(pr);
@@ -494,7 +520,7 @@ function FloorView({ canCash }) {
     const d = current.discount;
     if (d?.type === "amount") {
       setDiscKind("amount");
-      setDiscVal(d.value ? money(d.value) : "");
+      setDiscVal(d.value ? amountText(d.value) : "");
     } else {
       setDiscKind("percent");
       setDiscVal(d?.type === "percent" && d.value ? String(d.value) : "");
@@ -511,6 +537,7 @@ function FloorView({ canCash }) {
         api("/api/products"),
         api("/api/orders"),
       ]);
+      applyCurrency(inst);
       setInstance(inst);
       setSpaces(sp);
       setProducts(pr);
@@ -917,7 +944,7 @@ function FloorView({ canCash }) {
             ))}
           </div>
           <button
-            className="primary"
+            className="primary charge"
             disabled={!due}
             onClick={() =>
               run(async () => {
@@ -964,6 +991,7 @@ function KdsScreen() {
     api("/api/instance")
       .then((inst) => {
         applyTheme(inst.profile);
+        applyCurrency(inst);
         setStoreName(inst.venue?.name || inst.name || "Hermes OS");
       })
       .catch(() => applyTheme("restaurant"));
@@ -1131,10 +1159,6 @@ function KdsView({ onAuthFail }) {
   );
 }
 
-function money(cents) {
-  return ((cents || 0) / 100).toFixed(2);
-}
-
 function CashView() {
   const [shift, setShift] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -1232,7 +1256,7 @@ function CashView() {
             {orders.map((o) => {
               const due = o.due_cents ?? o.precuenta.subtotal_cents;
               const typed = payAmt[o.id];
-              const amount = typed === undefined ? money(due) : typed;
+              const amount = typed === undefined ? amountText(due) : typed;
               return (
               <div className="ticket" key={o.id}>
                 <header>
@@ -1254,13 +1278,13 @@ function CashView() {
                       key={n}
                       className="tab"
                       onClick={() =>
-                        setPayAmt({ ...payAmt, [o.id]: money(Math.ceil(due / n)) })
+                        setPayAmt({ ...payAmt, [o.id]: amountText(Math.ceil(due / n)) })
                       }
                     >
                       1/{n}
                     </button>
                   ))}
-                  <button className="tab" onClick={() => setPayAmt({ ...payAmt, [o.id]: money(due) })}>
+                  <button className="tab" onClick={() => setPayAmt({ ...payAmt, [o.id]: amountText(due) })}>
                     Todo
                   </button>
                 </div>

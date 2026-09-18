@@ -62,6 +62,7 @@ Orden de commits (rama `main`):
 19. Descuento por cuenta (% o monto)
 20. Back office mínimo: `/ventas` + `GET /api/sales/today`
 21. Impuesto de tienda opcional (apagado por defecto, 1500 bps = 15%)
+22. Moneda NIO/C$ y TPV compacto (franja de mesas)
 
 ### API útil
 

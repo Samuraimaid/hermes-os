@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     hermes_deployment: str = "local"
     hermes_tax_enabled: bool = False
     hermes_tax_bps: int = 1500
+    hermes_currency: str = "NIO"
 
 
 settings = Settings()
